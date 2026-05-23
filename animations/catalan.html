@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Catalan Numbers and Dyck Paths</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-up: #4c6ef5;
+            --color-down: #fa5252;
+            --color-sub-a: #12b886;
+            --color-sub-b: #be4bdb;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-up: #748ffc;
+            --color-down: #ff6b6b;
+            --color-sub-a: #20c997;
+            --color-sub-b: #da77f2;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            min-width: 35px;
+            background: var(--node-default);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+        button:hover {
+            border-color: var(--accent);
+        }
+        button.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Dyck Path Generator</div>
+        <div class="panel-desc">Visualizes Dyck paths of length $2n$, illustrating the Catalan number $C_n = \frac{1}{n+1}\binom{2n}{n}$.</div>
+        <div class="stat-line"><span>Semi-length ($n$):</span><span id="n-val" class="stat-val" style="color: var(--accent);">3</span></div>
+        <div class="stat-line"><span>Total Paths ($C_n$):</span><span id="cn-val" class="stat-val">5</span></div>
+        <div class="stat-line"><span>Path Index:</span><span id="index-val" class="stat-val">1 / 5</span></div>
+        
+        <div class="panel-title" style="margin-top: 12px; font-size: 11px;">Change $n$:</div>
+        <div class="btn-group">
+            <button onclick="setN(1)">1</button>
+            <button onclick="setN(2)">2</button>
+            <button onclick="setN(3)" class="active">3</button>
+            <button onclick="setN(4)">4</button>
+            <button onclick="setN(5)">5</button>
+        </div>
+
+        <div class="panel-title" style="margin-top: 12px; font-size: 11px;">Navigate Paths:</div>
+        <div class="btn-group">
+            <button onclick="prevPath()">Prev</button>
+            <button onclick="nextPath()">Next</button>
+            <button onclick="toggleAuto()" id="btn-auto">Auto</button>
+        </div>
+
+        <div class="panel-title" style="margin-top: 12px; font-size: 11px;">Algebraic Decomposition:</div>
+        <div class="panel-desc" style="margin-bottom: 0;">
+            <span style="color: var(--color-sub-a); font-weight: bold;">■ Subpath A</span> (inside first return)<br>
+            <span style="color: var(--color-sub-b); font-weight: bold;">■ Subpath B</span> (after first return)<br>
+            Decomposition: $\gamma = \text{up} + A + \text{down} + B$, confirming $C(X) = 1 + X \cdot C(X)^2$.
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let n = 3;
+        let paths = [];
+        let pathIndex = 0;
+        let isAuto = false;
+        let autoInterval = null;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        // Generate all Dyck paths of length 2n recursively
+        function generateDyckPaths(n) {
+            const results = [];
+            function recurse(currentPath, balance) {
+                if (currentPath.length === 2 * n) {
+                    if (balance === 0) results.push([...currentPath]);
+                    return;
+                }
+                // Try up-step
+                if (balance + 1 <= 2 * n - currentPath.length) {
+                    currentPath.push(1);
+                    recurse(currentPath, balance + 1);
+                    currentPath.pop();
+                }
+                // Try down-step
+                if (balance > 0) {
+                    currentPath.push(-1);
+                    recurse(currentPath, balance - 1);
+                    currentPath.pop();
+                }
+            }
+            recurse([], 0);
+            return results;
+        }
+
+        function setN(val) {
+            n = val;
+            paths = generateDyckPaths(n);
+            pathIndex = 0;
+            
+            document.querySelectorAll('.btn-group button').forEach(btn => {
+                if (parseInt(btn.textContent) === val) {
+                    btn.classList.add('active');
+                } else if (btn.textContent !== "Prev" && btn.textContent !== "Next" && btn.textContent !== "Auto" && btn.textContent !== "Pause") {
+                    btn.classList.remove('active');
+                }
+            });
+
+            document.getElementById('n-val').textContent = n;
+            document.getElementById('cn-val').textContent = paths.length;
+            updateStats();
+            draw();
+        }
+
+        function updateStats() {
+            document.getElementById('index-val').textContent = `${pathIndex + 1} / ${paths.length}`;
+        }
+
+        function nextPath() {
+            pathIndex = (pathIndex + 1) % paths.length;
+            updateStats();
+            draw();
+        }
+
+        function prevPath() {
+            pathIndex = (pathIndex - 1 + paths.length) % paths.length;
+            updateStats();
+            draw();
+        }
+
+        function toggleAuto() {
+            isAuto = !isAuto;
+            const btn = document.getElementById('btn-auto');
+            if (isAuto) {
+                btn.textContent = "Pause";
+                autoInterval = setInterval(nextPath, 1500);
+            } else {
+                btn.textContent = "Auto";
+                clearInterval(autoInterval);
+            }
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorUp = styles.getPropertyValue('--color-up').trim();
+            const colorDown = styles.getPropertyValue('--color-down').trim();
+            const colorSubA = styles.getPropertyValue('--color-sub-a').trim();
+            const colorSubB = styles.getPropertyValue('--color-sub-b').trim();
+            
+            const clearSpace = w > 600 ? 280 : 0;
+            const drawWidth = w - clearSpace - 80;
+            const drawHeight = h - 120;
+            const startX = clearSpace + 40;
+            const startY = h - 60;
+
+            const stepX = drawWidth / (2 * n);
+            // Height scale can be constant to avoid distortion
+            const stepY = Math.min(drawHeight / n, stepX);
+
+            const path = paths[pathIndex];
+            if (!path) return;
+
+            // 1. Draw grid
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "44";
+            ctx.lineWidth = 1;
+            // Vertical lines
+            for (let i = 0; i <= 2 * n; i++) {
+                ctx.moveTo(startX + i * stepX, startY);
+                ctx.lineTo(startX + i * stepX, startY - n * stepY);
+            }
+            // Horizontal lines
+            for (let j = 0; j <= n; j++) {
+                ctx.moveTo(startX, startY - j * stepY);
+                ctx.lineTo(startX + 2 * n * stepX, startY - j * stepY);
+            }
+            ctx.stroke();
+
+            // 2. Determine first return decomposition index
+            let balance = 0;
+            let firstReturnIdx = -1;
+            for (let i = 0; i < path.length; i++) {
+                balance += path[i];
+                if (balance === 0) {
+                    firstReturnIdx = i;
+                    break;
+                }
+            }
+
+            // 3. Draw the Dyck Path
+            let curX = startX;
+            let curY = startY;
+
+            for (let i = 0; i < path.length; i++) {
+                const step = path[i];
+                const nextX = curX + stepX;
+                const nextY = curY - step * stepY;
+
+                ctx.beginPath();
+                ctx.moveTo(curX, curY);
+                ctx.lineTo(nextX, nextY);
+
+                // Styling based on decomposition role:
+                // First step is 'up', first return step is 'down'
+                // Between them is sub-path A (in green)
+                // After first return is sub-path B (in purple)
+                if (i === 0) {
+                    ctx.strokeStyle = colorUp;
+                    ctx.lineWidth = 4;
+                } else if (i === firstReturnIdx) {
+                    ctx.strokeStyle = colorDown;
+                    ctx.lineWidth = 4;
+                } else if (i < firstReturnIdx) {
+                    ctx.strokeStyle = colorSubA;
+                    ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = colorSubB;
+                    ctx.lineWidth = 3;
+                }
+
+                ctx.stroke();
+
+                curX = nextX;
+                curY = nextY;
+            }
+
+            // 4. Draw vertices
+            curX = startX;
+            curY = startY;
+            
+            ctx.fillStyle = textColor;
+            ctx.beginPath();
+            ctx.arc(curX, curY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            for (let i = 0; i < path.length; i++) {
+                const step = path[i];
+                curX += stepX;
+                curY -= step * stepY;
+
+                ctx.beginPath();
+                ctx.arc(curX, curY, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // Initialize
+        setN(3);
+        resize();
+    </script>
+</body>
+</html>

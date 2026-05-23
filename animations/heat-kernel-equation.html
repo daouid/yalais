@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Heat Kernel Equation Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-kernel: #fa5252; /* Red for heat kernel */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-kernel: #ff6b6b;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .slider-group {
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .control-btn {
+            background: var(--node-default);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .control-btn:hover {
+            border-color: var(--accent);
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Heat Kernel Explorer</div>
+        <div class="panel-desc">
+            Visualizing the 1D heat kernel: $K(t, x) = \frac{1}{\sqrt{4\pi t}} e^{-x^2 / 4t}$. Watch the thermal energy diffuse over time.
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Time variable t</span>
+                <span id="time-val">0.50</span>
+            </div>
+            <input type="range" id="time-slider" min="0.05" max="5.0" step="0.02" value="0.5" oninput="updateTime()">
+        </div>
+
+        <div class="btn-group">
+            <button class="control-btn" id="play-btn" onclick="togglePlay()">Pause</button>
+            <button class="control-btn" onclick="resetTime()">Reset</button>
+        </div>
+
+        <div class="stat-line"><span>PDE:</span><span class="stat-val">&part;u/&part;t = &part;²u/&part;x²</span></div>
+        <div class="stat-line"><span>Total Heat (&int; K dx):</span><span class="stat-val" style="color: var(--accent);">1.000 (conserved)</span></div>
+        <div class="stat-line">
+            <span>Peak Temperature (x=0):</span>
+            <span id="peak-val" class="stat-val" style="color: var(--color-kernel);">0.40</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let t = 0.5;
+        let isPlaying = true;
+        let lastTime = 0;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateTime() {
+            t = parseFloat(document.getElementById('time-slider').value);
+            document.getElementById('time-val').textContent = t.toFixed(2);
+            draw();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-btn').textContent = isPlaying ? "Pause" : "Play";
+            if (isPlaying) requestAnimationFrame(animate);
+        }
+
+        function resetTime() {
+            t = 0.05;
+            document.getElementById('time-slider').value = t;
+            updateTime();
+        }
+
+        function animate(timestamp) {
+            if (!isPlaying) return;
+            
+            if (lastTime !== 0) {
+                const dt = (timestamp - lastTime) / 1000;
+                t += dt * 0.5; // speed factor
+                if (t > 5.0) t = 0.05;
+                document.getElementById('time-slider').value = t;
+                document.getElementById('time-val').textContent = t.toFixed(2);
+            }
+            lastTime = timestamp;
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Analytical Heat Kernel: K(t, x) = 1 / sqrt(4 * pi * t) * exp(-x^2 / (4 * t))
+        function solveKernel(x, time) {
+            const denom = Math.sqrt(4 * Math.PI * time);
+            return Math.exp(-(x * x) / (4 * time)) / denom;
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorKernel = styles.getPropertyValue('--color-kernel').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = h - 50;
+
+            const xMax = 5.0; // domain [-5, 5]
+            const yMax = 1.8;
+            const toScreenX = (x) => originX + (x / xMax) * (graphW / 2);
+            const toScreenY = (y) => originY - (y / yMax) * graphH;
+
+            // Update stats
+            const peak = solveKernel(0, t);
+            document.getElementById('peak-val').textContent = peak.toFixed(3);
+
+            // Axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(toScreenX(-xMax), toScreenY(0));
+            ctx.lineTo(toScreenX(xMax), toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(0), toScreenY(yMax));
+            ctx.stroke();
+
+            // Grid lines
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "33";
+            ctx.lineWidth = 1;
+            for (let x = -4; x <= 4; x += 2) {
+                if (x !== 0) {
+                    ctx.moveTo(toScreenX(x), toScreenY(0));
+                    ctx.lineTo(toScreenX(x), toScreenY(yMax));
+                }
+            }
+            for (let y = 0.5; y < yMax; y += 0.5) {
+                ctx.moveTo(toScreenX(-xMax), toScreenY(y));
+                ctx.lineTo(toScreenX(xMax), toScreenY(y));
+            }
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("x", toScreenX(xMax) + 15, toScreenY(0) + 4);
+            ctx.fillText("y", toScreenX(0) - 15, toScreenY(yMax) - 5);
+
+            // Compute curve points
+            const points = [];
+            const steps = 300;
+            for (let i = 0; i <= steps; i++) {
+                const x = -xMax + (i / steps) * (2 * xMax);
+                points.push({ x, y: solveKernel(x, t) });
+            }
+
+            // Draw heat kernel curve
+            ctx.beginPath();
+            ctx.strokeStyle = colorKernel;
+            ctx.lineWidth = 2.5;
+            points.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
+                else ctx.lineTo(toScreenX(pt.x), toScreenY(pt.y));
+            });
+            ctx.stroke();
+        }
+
+        // Initialize UI & start loop
+        updateTime();
+        resize();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

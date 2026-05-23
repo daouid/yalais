@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hadamard Matrix Exponential Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --color-m: #e64980; /* Pink for M */
+            --color-e: #228be6; /* Blue for E */
+            --cone-m: rgba(230, 73, 128, 0.15);
+            --cone-e: rgba(34, 139, 230, 0.1);
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --color-m: #f06595;
+            --color-e: #339af0;
+            --cone-m: rgba(240, 101, 149, 0.25);
+            --cone-e: rgba(51, 154, 240, 0.15);
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 320px;
+            width: calc(35% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .slider-group {
+            margin-bottom: 12px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .matrix-display {
+            font-family: monospace;
+            font-size: 11px;
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .matrix-box {
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.02);
+            padding: 6px;
+            border-radius: 6px;
+            flex: 1;
+            text-align: center;
+        }
+        [data-theme="dark"] .matrix-box {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 10px;
+            padding: 6px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent);
+        }
+        [data-theme="dark"] .instructions {
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Entrywise Exponential Explorer</div>
+        <div class="panel-desc">
+            For $2 \times 2$ matrices, if $M = \left(\begin{smallmatrix} a & b \\ b & c \end{smallmatrix}\right)$ is PSD ($ac \ge b^2$), then $E = e^{\circ M} = \left(\begin{smallmatrix} e^a & e^b \\ e^b & e^c \end{smallmatrix}\right)$ is PSD ($e^{a+c} \ge e^{2b} \iff a+c \ge 2b$).
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Off-diagonal element $b$</span>
+                <span id="b-val">1.00</span>
+            </div>
+            <input type="range" id="b-slider" min="-3.0" max="3.0" step="0.1" value="1.0" oninput="updateValues()">
+        </div>
+
+        <div class="matrix-display">
+            <div class="matrix-box" style="border-top: 2px solid var(--color-m);">
+                <strong>$M$</strong><br>
+                [<span id="mat-m-00">1.0</span>, <span id="mat-m-01">1.0</span>]<br>
+                [<span id="mat-m-10">1.0</span>, <span id="mat-m-11">1.0</span>]
+            </div>
+            <div class="matrix-box" style="border-top: 2px solid var(--color-e);">
+                <strong>$E = e^{\circ M}$</strong><br>
+                [<span id="mat-e-00">2.7</span>, <span id="mat-e-01">2.7</span>]<br>
+                [<span id="mat-e-10">2.7</span>, <span id="mat-e-11">2.7</span>]
+            </div>
+        </div>
+
+        <div class="stat-line"><span>$M$ eigenvalues:</span><span id="eig-m" class="stat-val">0.00, 2.00</span></div>
+        <div class="stat-line"><span>$E$ eigenvalues:</span><span id="eig-e" class="stat-val">0.00, 5.44</span></div>
+        <div class="stat-line"><span>$M$ is PSD ($ac \ge b^2$):</span><span id="psd-m" class="stat-val">True</span></div>
+        <div class="stat-line"><span>$E$ is PSD ($a+c \ge 2b$):</span><span id="psd-e" class="stat-val">True</span></div>
+
+        <div class="instructions">
+            Drag the <strong>target dot</strong> to adjust diagonal entries $(a, c)$ on the plane. The pink shaded region is the cone $M \succeq 0$. The blue region is $E \succeq 0$. Note that the pink region is always a subset of the blue region!
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let a = 1.5;
+        let c = 1.5;
+        let b = 1.0;
+        
+        let dragging = false;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateValues() {
+            b = parseFloat(document.getElementById('b-slider').value);
+            document.getElementById('b-val').textContent = b.toFixed(2);
+            draw();
+        }
+
+        function getEigenvalues(m00, m11, m01) {
+            const trace = m00 + m11;
+            const det = m00 * m11 - m01 * m01;
+            const disc = Math.sqrt(trace * trace / 4 - det);
+            const l1 = trace / 2 - disc;
+            const l2 = trace / 2 + disc;
+            return [l1, l2];
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorM = styles.getPropertyValue('--color-m').trim();
+            const colorE = styles.getPropertyValue('--color-e').trim();
+            const coneM = styles.getPropertyValue('--cone-m').trim();
+            const coneE = styles.getPropertyValue('--cone-e').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+
+            const clearSpace = w > 600 ? 340 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = h - 50 - graphH / 2;
+
+            const scale = Math.min(graphW, graphH) / 8; // units mapping
+
+            const toScreenX = (val) => originX + val * scale;
+            const toScreenY = (val) => originY - val * scale;
+            const toMathX = (x) => (x - originX) / scale;
+            const toMathY = (y) => (originY - y) / scale;
+
+            // Calculations
+            const m_eig = getEigenvalues(a, c, b);
+            const e00 = Math.exp(a);
+            const e11 = Math.exp(c);
+            const e01 = Math.exp(b);
+            const e_eig = getEigenvalues(e00, e11, e01);
+
+            const isPsdM = a >= 0 && c >= 0 && (a * c >= b * b);
+            const isPsdE = (a + c >= 2 * b);
+
+            // Update UI elements
+            document.getElementById('mat-m-00').textContent = a.toFixed(1);
+            document.getElementById('mat-m-01').textContent = b.toFixed(1);
+            document.getElementById('mat-m-10').textContent = b.toFixed(1);
+            document.getElementById('mat-m-11').textContent = c.toFixed(1);
+
+            document.getElementById('mat-e-00').textContent = e00.toFixed(1);
+            document.getElementById('mat-e-01').textContent = e01.toFixed(1);
+            document.getElementById('mat-e-10').textContent = e01.toFixed(1);
+            document.getElementById('mat-e-11').textContent = e11.toFixed(1);
+
+            document.getElementById('eig-m').textContent = `${m_eig[0].toFixed(2)}, ${m_eig[1].toFixed(2)}`;
+            document.getElementById('eig-e').textContent = `${e_eig[0].toFixed(2)}, ${e_eig[1].toFixed(2)}`;
+
+            const psdMEl = document.getElementById('psd-m');
+            psdMEl.textContent = isPsdM ? "True" : "False";
+            psdMEl.style.color = isPsdM ? "#40c057" : "#fa5252";
+
+            const psdEEl = document.getElementById('psd-e');
+            psdEEl.textContent = isPsdE ? "True" : "False";
+            psdEEl.style.color = isPsdE ? "#40c057" : "#fa5252";
+
+            // Draw regions in (a, c) plane
+            // Horizontal range is -4 to 4, Vertical range is -4 to 4
+            // 1. Draw E-PSD region (a + c >= 2b => c >= 2b - a)
+            ctx.beginPath();
+            ctx.moveTo(toScreenX(-4), toScreenY(2*b - (-4)));
+            ctx.lineTo(toScreenX(4), toScreenY(2*b - 4));
+            ctx.lineTo(toScreenX(4), toScreenY(4));
+            ctx.lineTo(toScreenX(-4), toScreenY(4));
+            ctx.closePath();
+            ctx.fillStyle = coneE;
+            ctx.fill();
+
+            // 2. Draw M-PSD region (a*c >= b^2 and a, c >= 0)
+            ctx.beginPath();
+            let b2 = b * b;
+            let started = false;
+            // Draw hyperbola c = b^2 / a
+            for (let x_val = 0.05; x_val <= 4.0; x_val += 0.05) {
+                let y_val = b2 / x_val;
+                if (y_val <= 4.0) {
+                    if (!started) {
+                        ctx.moveTo(toScreenX(x_val), toScreenY(4.0));
+                        ctx.lineTo(toScreenX(x_val), toScreenY(y_val));
+                        started = true;
+                    } else {
+                        ctx.lineTo(toScreenX(x_val), toScreenY(y_val));
+                    }
+                }
+            }
+            if (started) {
+                ctx.lineTo(toScreenX(4.0), toScreenY(b2 / 4.0));
+                ctx.lineTo(toScreenX(4.0), toScreenY(4.0));
+                ctx.closePath();
+                ctx.fillStyle = coneM;
+                ctx.fill();
+            }
+
+            // Draw Axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "77";
+            ctx.lineWidth = 1.5;
+            // X-axis (c = 0)
+            ctx.moveTo(toScreenX(-4), toScreenY(0));
+            ctx.lineTo(toScreenX(4), toScreenY(0));
+            // Y-axis (a = 0)
+            ctx.moveTo(toScreenX(0), toScreenY(-4));
+            ctx.lineTo(toScreenX(0), toScreenY(4));
+            ctx.stroke();
+
+            // Draw line boundaries
+            ctx.beginPath();
+            ctx.strokeStyle = colorE;
+            ctx.lineWidth = 2;
+            ctx.moveTo(toScreenX(-4), toScreenY(2*b - (-4)));
+            ctx.lineTo(toScreenX(4), toScreenY(2*b - 4));
+            ctx.stroke();
+
+            if (started) {
+                ctx.beginPath();
+                ctx.strokeStyle = colorM;
+                ctx.lineWidth = 2;
+                let first = true;
+                for (let x_val = 0.05; x_val <= 4.0; x_val += 0.05) {
+                    let y_val = b2 / x_val;
+                    if (y_val <= 4.0) {
+                        if (first) {
+                            ctx.moveTo(toScreenX(x_val), toScreenY(y_val));
+                            first = false;
+                        } else {
+                            ctx.lineTo(toScreenX(x_val), toScreenY(y_val));
+                        }
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Draw Labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("a (diagonal M_00)", toScreenX(4) - 30, toScreenY(0) + 15);
+            ctx.fillText("c (diagonal M_11)", toScreenX(0) + 40, toScreenY(4) + 15);
+
+            // Label Regions
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillStyle = colorM;
+            ctx.fillText("M ⪰ 0 (ac ≥ b²)", toScreenX(2.5), toScreenY(2.5));
+            ctx.fillStyle = colorE;
+            ctx.fillText("E ⪰ 0 (a+c ≥ 2b)", toScreenX(-2), toScreenY(2*b - (-2) + 0.5));
+
+            // Draw target point
+            ctx.beginPath();
+            ctx.arc(toScreenX(a), toScreenY(c), 8, 0, Math.PI * 2);
+            ctx.fillStyle = accent;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+
+            // Label target
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText(`(a=${a.toFixed(1)}, c=${c.toFixed(1)})`, toScreenX(a), toScreenY(c) - 14);
+        }
+
+        // Dragging logic
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+            const styles = getComputedStyle(document.documentElement);
+            const clearSpace = window.innerWidth > 600 ? 340 : 0;
+            const graphW = window.innerWidth - clearSpace - 80;
+            const graphH = window.innerHeight - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = window.innerHeight - 50 - graphH / 2;
+            const scale = Math.min(graphW, graphH) / 8;
+
+            const clickA = (pos.x - originX) / scale;
+            const clickC = (originY - pos.y) / scale;
+
+            if (Math.abs(clickA - a) < 0.3 && Math.abs(clickC - c) < 0.3) {
+                dragging = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const pos = getMousePos(e);
+            const clearSpace = window.innerWidth > 600 ? 340 : 0;
+            const graphW = window.innerWidth - clearSpace - 80;
+            const graphH = window.innerHeight - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = window.innerHeight - 50 - graphH / 2;
+            const scale = Math.min(graphW, graphH) / 8;
+
+            a = Math.max(-4.0, Math.min(4.0, (pos.x - originX) / scale));
+            c = Math.max(-4.0, Math.min(4.0, (originY - pos.y) / scale));
+            draw();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            dragging = false;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            const pos = getMousePos(e.touches[0]);
+            const clearSpace = window.innerWidth > 600 ? 340 : 0;
+            const graphW = window.innerWidth - clearSpace - 80;
+            const graphH = window.innerHeight - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = window.innerHeight - 50 - graphH / 2;
+            const scale = Math.min(graphW, graphH) / 8;
+
+            const clickA = (pos.x - originX) / scale;
+            const clickC = (originY - pos.y) / scale;
+
+            if (Math.abs(clickA - a) < 0.4 && Math.abs(clickC - c) < 0.4) {
+                dragging = true;
+            }
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (!dragging) return;
+            const pos = getMousePos(e.touches[0]);
+            const clearSpace = window.innerWidth > 600 ? 340 : 0;
+            const graphW = window.innerWidth - clearSpace - 80;
+            const graphH = window.innerHeight - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = window.innerHeight - 50 - graphH / 2;
+            const scale = Math.min(graphW, graphH) / 8;
+
+            a = Math.max(-4.0, Math.min(4.0, (pos.x - originX) / scale));
+            c = Math.max(-4.0, Math.min(4.0, (originY - pos.y) / scale));
+            draw();
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchend', () => {
+            dragging = false;
+        });
+
+        resize();
+    </script>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Brauer Character Values in Cyclotomic Fields Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --color-root: #fa5252; /* Red for roots of unity */
+            --color-sum: #12b886;  /* Green for the trace sum */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --color-root: #ff6b6b;
+            --color-sum: #20c997;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 320px;
+            width: calc(35% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .slider-group {
+            margin-bottom: 12px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .roots-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 8px 0;
+        }
+        .root-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-size: 10px;
+            font-family: monospace;
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .root-btn.active {
+            background: var(--accent);
+            color: #white;
+            border-color: var(--accent);
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 10px;
+            padding: 6px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent);
+        }
+        [data-theme="dark"] .instructions {
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Brauer Character Explorer</div>
+        <div class="panel-desc">
+            The trace (character value) $\chi(g) = \operatorname{Tr}(\rho(g))$ of any element $g \in G$ is the sum of its eigenvalues, which are $m$-th roots of unity (where $m$ is the exponent of $G$). Thus $\chi(g) \in \mathbb{Q}(\zeta_m)$.
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Exponent of Group $m$</span>
+                <span id="m-val">6</span>
+            </div>
+            <input type="range" id="m-slider" min="2" max="12" step="1" value="6" oninput="changeM()">
+        </div>
+
+        <div class="stat-line"><span>Primitive root $\zeta_m$:</span><span id="zeta-val" class="stat-val">e^(2πi/6)</span></div>
+        <div class="stat-line"><span>Active eigenvalues:</span><span id="active-count" class="stat-val">3</span></div>
+        
+        <div style="font-size: 10px; font-weight: 600; margin-top: 6px;">Select Eigenvalues (multiset):</div>
+        <div class="roots-selector" id="selector">
+            <!-- Buttons will go here -->
+        </div>
+
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Trace $\chi(g)$ sum:</span>
+            <span id="trace-sum-val" class="stat-val" style="color: var(--color-sum);">1.50 + 0.87i</span>
+        </div>
+        <div class="stat-line">
+            <span>In $\mathbb{Q}(\zeta_m)$?</span>
+            <span style="color: #40c057; font-weight: bold;">Guaranteed True</span>
+        </div>
+
+        <div class="instructions">
+            Choose group exponent $m$. Click the buttons to select which power of $\zeta_m$ are eigenvalues of $\rho(g)$. The animation sums them tip-to-tail in the complex plane to find the trace.
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let m = 6;
+        // Selected powers of zeta_m (e.g. [0, 1, 2] means 1, zeta, zeta^2)
+        let selected = [0, 1, 1];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.height = rect.height * dpr;
+            canvas.width = rect.width * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function changeM() {
+            m = parseInt(document.getElementById('m-slider').value);
+            document.getElementById('m-val').textContent = m;
+            document.getElementById('zeta-val').textContent = `e^(2πi/${m})`;
+            
+            // reset selected
+            selected = [0, 1 % m];
+            if (m > 2) selected.push(2 % m);
+            
+            updateSelector();
+            draw();
+        }
+
+        function updateSelector() {
+            const selEl = document.getElementById('selector');
+            selEl.innerHTML = "";
+            
+            // Count frequencies
+            let counts = {};
+            for (let i = 0; i < m; i++) counts[i] = 0;
+            selected.forEach(x => counts[x]++);
+
+            for (let i = 0; i < m; i++) {
+                const btn = document.createElement('button');
+                btn.className = `root-btn ${counts[i] > 0 ? 'active' : ''}`;
+                btn.innerHTML = `ζ^${i} (x${counts[i]})`;
+                btn.onclick = () => toggleSelect(i);
+                selEl.appendChild(btn);
+            }
+            
+            document.getElementById('active-count').textContent = selected.length;
+        }
+
+        function toggleSelect(power) {
+            // Count how many times this power is selected
+            let count = selected.filter(x => x === power).length;
+            if (count === 0) {
+                selected.push(power);
+            } else if (count === 1) {
+                selected.push(power); // Allow multiplicity up to 2
+            } else {
+                // remove all
+                selected = selected.filter(x => x !== power);
+            }
+            // limit total eigenvalues to 5 for clean visualization
+            if (selected.length > 5) {
+                selected.shift();
+            }
+            updateSelector();
+            draw();
+        }
+
+        function drawVector(from, to, color, width = 2, dash = []) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            if (dash.length > 0) ctx.setLineDash(dash);
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Arrow head
+            const angle = Math.atan2(to.y - from.y, to.x - from.x);
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.moveTo(to.x, to.y);
+            ctx.lineTo(to.x - 7 * Math.cos(angle - Math.PI/6), to.y - 7 * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(to.x - 7 * Math.cos(angle + Math.PI/6), to.y - 7 * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const colorRoot = styles.getPropertyValue('--color-root').trim();
+            const colorSum = styles.getPropertyValue('--color-sum').trim();
+
+            const clearSpace = w > 600 ? 340 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40 + graphW / 2;
+            const originY = h - 50 - graphH / 2;
+
+            const scale = Math.min(graphW, graphH) / 6; // zoom level
+
+            const toScreenX = (val) => originX + val * scale;
+            const toScreenY = (val) => originY - val * scale;
+
+            // Draw Complex Plane Grid & Unit Circle
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "44";
+            ctx.lineWidth = 1;
+            ctx.moveTo(toScreenX(-3.5), toScreenY(0));
+            ctx.lineTo(toScreenX(3.5), toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(-3.5));
+            ctx.lineTo(toScreenX(0), toScreenY(3.5));
+            ctx.stroke();
+
+            // Unit circle
+            ctx.beginPath();
+            ctx.arc(originX, originY, scale, 0, Math.PI * 2);
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Draw all m-th roots of unity as small gray dots
+            for (let i = 0; i < m; i++) {
+                const angle = (i * 2 * Math.PI) / m;
+                const rx = Math.cos(angle);
+                const ry = Math.sin(angle);
+                
+                ctx.beginPath();
+                ctx.arc(toScreenX(rx), toScreenY(ry), 4, 0, Math.PI * 2);
+                ctx.fillStyle = textColor + "55";
+                ctx.fill();
+
+                // Draw small label e.g. ζ^i
+                ctx.fillStyle = textColor + "aa";
+                ctx.font = "9px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`ζ^${i}`, toScreenX(rx * 1.22), toScreenY(ry * 1.22) + 3);
+            }
+
+            // Sum eigenvalues tip-to-tail
+            let current = { x: 0, y: 0 };
+            
+            selected.forEach((power, idx) => {
+                const angle = (power * 2 * Math.PI) / m;
+                const rx = Math.cos(angle);
+                const ry = Math.sin(angle);
+
+                const next = {
+                    x: current.x + rx,
+                    y: current.y + ry
+                };
+
+                // Draw eigenvalue component vector
+                // Each step gets a slightly different color or alpha
+                const alpha = (0.4 + 0.6 * (idx / selected.length)).toFixed(2);
+                drawVector(
+                    { x: toScreenX(current.x), y: toScreenY(current.y) },
+                    { x: toScreenX(next.x), y: toScreenY(next.y) },
+                    colorRoot + Math.floor(alpha*255).toString(16).padStart(2,'0'),
+                    2.5
+                );
+
+                current = next;
+            });
+
+            // Draw final sum vector from origin to final point
+            drawVector(
+                { x: toScreenX(0), y: toScreenY(0) },
+                { x: toScreenX(current.x), y: toScreenY(current.y) },
+                colorSum,
+                3.5
+            );
+
+            // Draw final dot
+            ctx.beginPath();
+            ctx.arc(toScreenX(current.x), toScreenY(current.y), 6, 0, Math.PI * 2);
+            ctx.fillStyle = colorSum;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 1.5;
+            ctx.fill();
+            ctx.stroke();
+
+            // Trace values text update
+            document.getElementById('trace-sum-val').textContent = `${current.x.toFixed(2)} ${current.y >= 0 ? '+' : '-'} ${Math.abs(current.y).toFixed(2)}i`;
+
+            // Draw labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Re", toScreenX(3.5) - 15, toScreenY(0) + 15);
+            ctx.fillText("Im", toScreenX(0) + 15, toScreenY(3.5) + 15);
+        }
+
+        // Init
+        changeM();
+        updateSelector();
+        resize();
+    </script>
+</body>
+</html>

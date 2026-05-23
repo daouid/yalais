@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Finite Graph Ramsey Theorem (R(3,3)=6)</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --edge-red: #e03131;
+            --edge-blue: #4c6ef5;
+            --edge-red-highlight: rgba(224, 49, 49, 0.2);
+            --edge-blue-highlight: rgba(76, 110, 245, 0.2);
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --edge-red: #ff6b6b;
+            --edge-blue: #748ffc;
+            --edge-red-highlight: rgba(255, 107, 107, 0.25);
+            --edge-blue-highlight: rgba(116, 143, 252, 0.25);
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        button {
+            flex: 1;
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button.sec {
+            background: var(--node-default);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Ramsey R(3,3)=6 Explorer</div>
+        <div class="panel-desc">Click any edge to toggle its color between Red and Blue. The system dynamically detects monochromatic triangles.</div>
+        <div class="stat-line"><span>Vertices:</span><span class="stat-val">6 (K₆)</span></div>
+        <div class="stat-line"><span>Total Edges:</span><span class="stat-val">15</span></div>
+        <div class="stat-line"><span>Red Triangles:</span><span id="red-count" class="stat-val" style="color: var(--edge-red);">0</span></div>
+        <div class="stat-line"><span>Blue Triangles:</span><span id="blue-count" class="stat-val" style="color: var(--edge-blue);">0</span></div>
+        <div class="stat-line"><span>Monochromatic Triangles:</span><span id="total-count" class="stat-val" style="font-weight: bold;">0</span></div>
+        <div class="btn-group">
+            <button onclick="randomizeEdges()">Randomize</button>
+            <button class="sec" onclick="clearEdges('red')">All Red</button>
+            <button class="sec" onclick="clearEdges('blue')">All Blue</button>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let nodes = [];
+        let edges = [];
+        let highlightedTriangles = [];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function initGraph() {
+            // Place 6 vertices in a circle
+            nodes = [];
+            const n = 6;
+            for (let i = 0; i < n; i++) {
+                const angle = (i * 2 * Math.PI) / n - Math.PI / 2;
+                nodes.push({
+                    id: i,
+                    label: String.fromCharCode(65 + i), // A, B, C, D, E, F
+                    x: 0.5 + 0.3 * Math.cos(angle),
+                    y: 0.5 + 0.3 * Math.sin(angle)
+                });
+            }
+
+            // Create all 15 connections for K6
+            edges = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    // Start with a mix of red and blue
+                    const color = (i + j) % 2 === 0 ? 'red' : 'blue';
+                    edges.push({
+                        from: i,
+                        to: j,
+                        color: color
+                    });
+                }
+            }
+            detectTriangles();
+        }
+
+        function randomizeEdges() {
+            edges.forEach(e => {
+                e.color = Math.random() > 0.5 ? 'red' : 'blue';
+            });
+            detectTriangles();
+            draw();
+        }
+
+        function clearEdges(color) {
+            edges.forEach(e => {
+                e.color = color;
+            });
+            detectTriangles();
+            draw();
+        }
+
+        function detectTriangles() {
+            highlightedTriangles = [];
+            let redCount = 0;
+            let blueCount = 0;
+
+            // Search all triples
+            for (let i = 0; i < 6; i++) {
+                for (let j = i + 1; j < 6; j++) {
+                    for (let k = j + 1; k < 6; k++) {
+                        const e1 = findEdge(i, j);
+                        const e2 = findEdge(j, k);
+                        const e3 = findEdge(i, k);
+
+                        if (e1 && e2 && e3 && e1.color === e2.color && e2.color === e3.color) {
+                            highlightedTriangles.push({
+                                nodes: [i, j, k],
+                                color: e1.color
+                            });
+                            if (e1.color === 'red') redCount++;
+                            else blueCount++;
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('red-count').textContent = redCount;
+            document.getElementById('blue-count').textContent = blueCount;
+            document.getElementById('total-count').textContent = redCount + blueCount;
+        }
+
+        function findEdge(u, v) {
+            return edges.find(e => (e.from === u && e.to === v) || (e.from === v && e.to === u));
+        }
+
+        // Distance from point (px, py) to line segment (x1, y1) - (x2, y2)
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1)**2 + (y2 - y1)**2;
+            if (l2 === 0) return Math.sqrt((px - x1)**2 + (py - y1)**2);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt((px - (x1 + t * (x2 - x1)))**2 + (py - (y1 + t * (y2 - y1)))**2);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const px = e.clientX - rect.left;
+            const py = e.clientY - rect.top;
+            const w = rect.width;
+            const h = rect.height;
+
+            const scaleX = (x) => {
+                const clearSpace = w > 600 ? 240 : 0;
+                return clearSpace + x * (w - clearSpace);
+            };
+            const scaleY = (y) => y * h;
+
+            // Find clicked edge
+            let clickedEdge = null;
+            let minDist = 12; // Click tolerance in pixels
+
+            edges.forEach(edge => {
+                const n1 = nodes[edge.from];
+                const n2 = nodes[edge.to];
+                const x1 = scaleX(n1.x);
+                const y1 = scaleY(n1.y);
+                const x2 = scaleX(n2.x);
+                const y2 = scaleY(n2.y);
+
+                const dist = distToSegment(px, py, x1, y1, x2, y2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    clickedEdge = edge;
+                }
+            });
+
+            if (clickedEdge) {
+                clickedEdge.color = clickedEdge.color === 'red' ? 'blue' : 'red';
+                detectTriangles();
+                draw();
+            }
+        });
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const edgeRed = styles.getPropertyValue('--edge-red').trim();
+            const edgeBlue = styles.getPropertyValue('--edge-blue').trim();
+            const edgeRedHighlight = styles.getPropertyValue('--edge-red-highlight').trim();
+            const edgeBlueHighlight = styles.getPropertyValue('--edge-blue-highlight').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            
+            const scaleX = (x) => {
+                const clearSpace = w > 600 ? 240 : 0;
+                return clearSpace + x * (w - clearSpace);
+            };
+            const scaleY = (y) => y * h;
+
+            // 1. Draw Monochromatic Triangle Background Fills (Glowing Area)
+            highlightedTriangles.forEach(tri => {
+                const n0 = nodes[tri.nodes[0]];
+                const n1 = nodes[tri.nodes[1]];
+                const n2 = nodes[tri.nodes[2]];
+
+                ctx.beginPath();
+                ctx.moveTo(scaleX(n0.x), scaleY(n0.y));
+                ctx.lineTo(scaleX(n1.x), scaleY(n1.y));
+                ctx.lineTo(scaleX(n2.x), scaleY(n2.y));
+                ctx.closePath();
+
+                ctx.fillStyle = tri.color === 'red' ? edgeRedHighlight : edgeBlueHighlight;
+                ctx.fill();
+            });
+
+            // 2. Draw Edges
+            edges.forEach(edge => {
+                const n1 = nodes[edge.from];
+                const n2 = nodes[edge.to];
+                const x1 = scaleX(n1.x);
+                const y1 = scaleY(n1.y);
+                const x2 = scaleX(n2.x);
+                const y2 = scaleY(n2.y);
+
+                // Check if this edge belongs to a highlighted triangle
+                const inHighlight = highlightedTriangles.some(tri => 
+                    tri.nodes.includes(edge.from) && tri.nodes.includes(edge.to) && tri.color === edge.color
+                );
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+
+                if (inHighlight) {
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = edge.color === 'red' ? edgeRed : edgeBlue;
+                    ctx.shadowColor = edge.color === 'red' ? edgeRed : edgeBlue;
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = edge.color === 'red' ? edgeRed : edgeBlue;
+                    ctx.strokeStyle += '88'; // Add slight transparency to non-highlighted edges
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.stroke();
+                ctx.shadowBlur = 0; // Reset
+            });
+
+            // 3. Draw Nodes
+            nodes.forEach(n => {
+                const x = scaleX(n.x);
+                const y = scaleY(n.y);
+                const r = 20;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, 2 * Math.PI);
+                ctx.fillStyle = nodeDefault;
+                ctx.fill();
+                
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillStyle = textColor;
+                ctx.font = "bold 13px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(n.label, x, y);
+            });
+        }
+
+        // Initialize
+        initGraph();
+        resize();
+    </script>
+</body>
+</html>

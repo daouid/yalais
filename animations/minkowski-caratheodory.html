@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Minkowski-Carathéodory Theorem Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #868e96;
+            --extreme-color: #fa5252;
+            --inside-triangle: rgba(76, 110, 245, 0.15);
+            --target-color: #12b886;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #495057;
+            --extreme-color: #ff6b6b;
+            --inside-triangle: rgba(92, 124, 250, 0.25);
+            --target-color: #20c997;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 320px;
+            width: calc(35% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 10px;
+            padding: 6px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent);
+        }
+        [data-theme="dark"] .instructions {
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Minkowski-Carathéodory Explorer</div>
+        <div class="panel-desc">
+            Visualizing Carathéodory's Theorem: Any point $x$ inside a compact convex set in $\mathbb{R}^d$ can be written as a convex combination of at most $d+1$ extreme points.
+        </div>
+        
+        <div class="stat-line"><span>Dimension ($d$):</span><span class="stat-val">2</span></div>
+        <div class="stat-line"><span>Required extreme points ($d+1$):</span><span class="stat-val">3</span></div>
+        <div class="stat-line"><span>Total vertices:</span><span id="total-pts" class="stat-val">6</span></div>
+        <div class="stat-line"><span>Convex hull vertices (Extreme points):</span><span id="extreme-pts-count" class="stat-val">5</span></div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Point location:</span>
+            <span id="target-status" class="stat-val" style="color: #40c057;">Inside Hull</span>
+        </div>
+        <div id="barycentric-container" style="margin-top: 6px; font-size: 11px; font-family: monospace;">
+            <!-- Weights will go here -->
+        </div>
+
+        <div class="instructions">
+            Drag the <strong>green target point</strong> inside the set. Drag any <strong>gray vertex</strong> to change the geometry of the set. Note how exactly 3 red extreme vertices are highlighted to represent the green point.
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Initial points setup
+        let points = [
+            { x: 200, y: 150, isVertex: true },
+            { x: 350, y: 120, isVertex: true },
+            { x: 450, y: 220, isVertex: true },
+            { x: 400, y: 380, isVertex: true },
+            { x: 220, y: 350, isVertex: true },
+            { x: 280, y: 240, isVertex: true } // Interior point (non-extreme)
+        ];
+        
+        let target = { x: 320, y: 250, isTarget: true };
+        
+        let draggedObj = null;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Adjust points if too far off screen
+            points.forEach(p => {
+                p.x = Math.max(50, Math.min(rect.width - 50, p.x));
+                p.y = Math.max(50, Math.min(rect.height - 50, p.y));
+            });
+            target.x = Math.max(50, Math.min(rect.width - 50, target.x));
+            target.y = Math.max(50, Math.min(rect.height - 50, target.y));
+            
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        // Convex Hull helper functions (Graham Scan / Jarvis March)
+        function crossProduct(o, a, b) {
+            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        }
+
+        function getConvexHull(pts) {
+            let sorted = pts.slice().sort((a, b) => a.x !== b.x ? a.x - b.x : a.y - b.y);
+            let lower = [];
+            for (let p of sorted) {
+                while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+                    lower.pop();
+                }
+                lower.push(p);
+            }
+            let upper = [];
+            for (let i = sorted.length - 1; i >= 0; i--) {
+                let p = sorted[i];
+                while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+                    upper.pop();
+                }
+                upper.push(p);
+            }
+            upper.pop();
+            lower.pop();
+            return lower.concat(upper);
+        }
+
+        // Point-in-triangle check
+        function isPointInTriangle(p, a, b, c) {
+            let d1 = crossProduct(p, a, b);
+            let d2 = crossProduct(p, b, c);
+            let d3 = crossProduct(p, c, a);
+            
+            let has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+            let has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+            
+            return !(has_neg && has_pos);
+        }
+
+        // Compute barycentric coordinates
+        function getBarycentric(p, a, b, c) {
+            let det = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
+            if (Math.abs(det) < 1e-6) return [0, 0, 0];
+            let w1 = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / det;
+            let w2 = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / det;
+            let w3 = 1 - w1 - w2;
+            return [w1, w2, w3];
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const extremeColor = styles.getPropertyValue('--extreme-color').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            const targetColor = styles.getPropertyValue('--target-color').trim();
+            const insideTriangleColor = styles.getPropertyValue('--inside-triangle').trim();
+
+            // Compute Convex Hull
+            let hull = getConvexHull(points);
+            let extremeIndices = new Set(hull.map(p => points.indexOf(p)));
+
+            document.getElementById('total-pts').textContent = points.length;
+            document.getElementById('extreme-pts-count').textContent = hull.length;
+
+            // Find 3 extreme points forming a triangle that encloses the target
+            let enclosingTriangle = null;
+            let weights = [0, 0, 0];
+            
+            // Loop through all triplets of hull vertices
+            for (let i = 0; i < hull.length; i++) {
+                for (let j = i + 1; j < hull.length; j++) {
+                    for (let k = j + 1; k < hull.length; k++) {
+                        let a = hull[i];
+                        let b = hull[j];
+                        let c = hull[k];
+                        if (isPointInTriangle(target, a, b, c)) {
+                            enclosingTriangle = [a, b, c];
+                            weights = getBarycentric(target, a, b, c);
+                            break;
+                        }
+                    }
+                    if (enclosingTriangle) break;
+                }
+                if (enclosingTriangle) break;
+            }
+
+            // Update panel text
+            const statusEl = document.getElementById('target-status');
+            const baryEl = document.getElementById('barycentric-container');
+            
+            if (enclosingTriangle) {
+                statusEl.textContent = "Inside Hull";
+                statusEl.style.color = "#40c057";
+                
+                // Show barycentric weights
+                let names = enclosingTriangle.map(p => `P${points.indexOf(p) + 1}`);
+                baryEl.innerHTML = `
+                    <div style="font-weight:bold; margin-bottom:4px;">Convex Combination:</div>
+                    P_target = ${weights[0].toFixed(2)} * ${names[0]}<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; + ${weights[1].toFixed(2)} * ${names[1]}<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; + ${weights[2].toFixed(2)} * ${names[2]}
+                `;
+            } else {
+                statusEl.textContent = "Outside Hull";
+                statusEl.style.color = "#fa5252";
+                baryEl.innerHTML = `<span style="color:#fa5252;">Point must be inside the convex hull to be represented.</span>`;
+            }
+
+            // Draw Convex Hull fill and outline
+            if (hull.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(hull[0].x, hull[0].y);
+                for (let i = 1; i < hull.length; i++) {
+                    ctx.lineTo(hull[i].x, hull[i].y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = borderColor + "11";
+                ctx.fill();
+            }
+
+            // Draw enclosing triangle
+            if (enclosingTriangle) {
+                ctx.beginPath();
+                ctx.moveTo(enclosingTriangle[0].x, enclosingTriangle[0].y);
+                ctx.lineTo(enclosingTriangle[1].x, enclosingTriangle[1].y);
+                ctx.lineTo(enclosingTriangle[2].x, enclosingTriangle[2].y);
+                ctx.closePath();
+                ctx.fillStyle = insideTriangleColor;
+                ctx.fill();
+                ctx.strokeStyle = accent;
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw connecting lines from target to triangle vertices
+                ctx.beginPath();
+                ctx.strokeStyle = targetColor + "aa";
+                ctx.lineWidth = 1;
+                for (let v of enclosingTriangle) {
+                    ctx.moveTo(target.x, target.y);
+                    ctx.lineTo(v.x, v.y);
+                }
+                ctx.stroke();
+            }
+
+            // Draw points
+            points.forEach((p, idx) => {
+                let isExtreme = extremeIndices.has(idx);
+                let isUsedInTriangle = enclosingTriangle && enclosingTriangle.includes(p);
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, isUsedInTriangle ? 10 : 7, 0, Math.PI * 2);
+                
+                if (isUsedInTriangle) {
+                    ctx.fillStyle = extremeColor;
+                    ctx.strokeStyle = accent;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                } else if (isExtreme) {
+                    ctx.fillStyle = extremeColor + "bb";
+                } else {
+                    ctx.fillStyle = nodeDefault;
+                }
+                
+                ctx.fill();
+
+                // Draw Label
+                ctx.fillStyle = textColor;
+                ctx.font = "11px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`P${idx + 1}`, p.x, p.y - 14);
+            });
+
+            // Draw target point
+            ctx.beginPath();
+            ctx.arc(target.x, target.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = targetColor;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("T", target.x, target.y - 12);
+        }
+
+        // Dragging physics
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
+        function findNear(pos) {
+            const distSq = (p1, p2) => (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
+            
+            // Check target first
+            if (distSq(pos, target) < 150) {
+                return target;
+            }
+            // Check other points
+            for (let p of points) {
+                if (distSq(pos, p) < 150) {
+                    return p;
+                }
+            }
+            return null;
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+            draggedObj = findNear(pos);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!draggedObj) return;
+            const pos = getMousePos(e);
+            draggedObj.x = pos.x;
+            draggedObj.y = pos.y;
+            draw();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            draggedObj = null;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            const pos = getMousePos(e.touches[0]);
+            draggedObj = findNear(pos);
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (!draggedObj) return;
+            const pos = getMousePos(e.touches[0]);
+            draggedObj.x = pos.x;
+            draggedObj.y = pos.y;
+            draw();
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchend', () => {
+            draggedObj = null;
+        });
+
+        // Init
+        points[0].x = 220; points[0].y = 120;
+        points[1].x = 380; points[1].y = 100;
+        points[2].x = 460; points[2].y = 200;
+        points[3].x = 420; points[3].y = 350;
+        points[4].x = 200; points[4].y = 320;
+        points[5].x = 280; points[5].y = 230;
+        
+        target.x = 310; target.y = 210;
+
+        resize();
+    </script>
+</body>
+</html>

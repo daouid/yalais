@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dirichlet Eigenvalues Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-wave: #228be6; /* Blue for the wave */
+            --color-boundary: #fa5252; /* Red for boundary points */
+            --color-resonance: #40c057; /* Green for resonance */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-wave: #339af0;
+            --color-boundary: #ff6b6b;
+            --color-resonance: #51cf66;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 290px;
+            width: calc(32% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .slider-group {
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Dirichlet Eigenvalues</div>
+        <div class="panel-desc">
+            Visualizing solutions to $y'' + \lambda y = 0$ with $y(0) = 0$. Adjust $\lambda$ to satisfy the boundary condition $y(\pi) = 0$.
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Eigenvalue &lambda;</span>
+                <span id="lambda-val">1.00</span>
+            </div>
+            <input type="range" id="lambda-slider" min="0.0" max="16.5" step="0.05" value="1.0" oninput="updateLambda()">
+        </div>
+
+        <div class="stat-line"><span>B.C. at x=0:</span><span class="stat-val" style="color: var(--color-resonance);">y(0) = 0.00</span></div>
+        <div class="stat-line">
+            <span>B.C. at x=&pi;:</span>
+            <span id="bc-pi-val" class="stat-val" style="color: var(--color-resonance);">y(&pi;) = 0.00</span>
+        </div>
+        <div class="stat-line">
+            <span>Resonance Mode (n):</span>
+            <span id="mode-val" class="stat-val">1 (fundamental)</span>
+        </div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Eigenstate Found:</span>
+            <span id="eigenstate-status" class="stat-val" style="color: var(--color-resonance);">True (&lambda; = n²)</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let lambda = 1.0;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateLambda() {
+            lambda = parseFloat(document.getElementById('lambda-slider').value);
+            document.getElementById('lambda-val').textContent = lambda.toFixed(2);
+            draw();
+        }
+
+        // Solution y(x) = sin(sqrt(lambda) * x)
+        function solveY(x, lam) {
+            if (lam <= 0) return x; // lambda = 0 solution is linear
+            const k = Math.sqrt(lam);
+            return Math.sin(k * x);
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorWave = styles.getPropertyValue('--color-wave').trim();
+            const colorBoundary = styles.getPropertyValue('--color-boundary').trim();
+            const colorResonance = styles.getPropertyValue('--color-resonance').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40;
+            const originY = h / 2;
+
+            const xMax = Math.PI;
+            const yMax = 1.5;
+            const toScreenX = (x) => originX + (x / xMax) * graphW;
+            const toScreenY = (y) => originY - (y / yMax) * (graphH / 2);
+
+            // Check if lambda is close to n^2
+            const k = Math.sqrt(lambda);
+            const nearestN = Math.round(k);
+            const isEigenvalue = Math.abs(k - nearestN) < 0.05 && lambda > 0.01;
+
+            const yPi = solveY(Math.PI, lambda);
+            document.getElementById('bc-pi-val').textContent = `y(π) = ${yPi.toFixed(3)}`;
+            document.getElementById('bc-pi-val').style.color = Math.abs(yPi) < 0.15 ? colorResonance : colorBoundary;
+
+            const stateEl = document.getElementById('eigenstate-status');
+            const modeEl = document.getElementById('mode-val');
+            if (isEigenvalue) {
+                stateEl.textContent = `True (λ = ${nearestN * nearestN})`;
+                stateEl.style.color = colorResonance;
+                modeEl.textContent = `${nearestN} (eigenmode)`;
+            } else {
+                stateEl.textContent = `False (y(π) ≠ 0)`;
+                stateEl.style.color = colorBoundary;
+                modeEl.textContent = "None (transient)";
+            }
+
+            // Draw Axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(xMax) + 10, toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(-yMax));
+            ctx.lineTo(toScreenX(0), toScreenY(yMax));
+            ctx.stroke();
+
+            // Boundary locks lines (clamped boundary guides)
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "33";
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(toScreenX(xMax), toScreenY(-yMax));
+            ctx.lineTo(toScreenX(xMax), toScreenY(yMax));
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("x", toScreenX(xMax) + 20, toScreenY(0) + 4);
+            ctx.fillText("π", toScreenX(xMax), toScreenY(0) + 16);
+            ctx.fillText("0", toScreenX(0), toScreenY(0) + 16);
+            ctx.fillText("y", toScreenX(0), toScreenY(yMax) - 15);
+
+            // Compute curve points
+            const points = [];
+            const steps = 200;
+            for (let i = 0; i <= steps; i++) {
+                const x = (i / steps) * xMax;
+                points.push({ x, y: solveY(x, lambda) });
+            }
+
+            // Draw standing wave
+            ctx.beginPath();
+            ctx.strokeStyle = isEigenvalue ? colorResonance : colorWave;
+            ctx.lineWidth = isEigenvalue ? 3.5 : 2.5;
+            points.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
+                else ctx.lineTo(toScreenX(pt.x), toScreenY(pt.y));
+            });
+            ctx.stroke();
+
+            // Draw dots at boundary conditions
+            ctx.beginPath();
+            ctx.arc(toScreenX(0), toScreenY(0), 6, 0, Math.PI * 2);
+            ctx.fillStyle = colorResonance;
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(toScreenX(xMax), toScreenY(yPi), 6, 0, Math.PI * 2);
+            ctx.fillStyle = Math.abs(yPi) < 0.15 ? colorResonance : colorBoundary;
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Initialize UI and draw
+        updateLambda();
+        resize();
+    </script>
+</body>
+</html>

@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bing's House with Two Rooms Retraction Explorer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.15);
+            --color-chamber: #228be6;
+            --color-house-face: rgba(76, 110, 245, 0.15);
+            --color-solid-cell: rgba(253, 126, 20, 0.12);
+            --color-active-cell: rgba(250, 82, 82, 0.4);
+            --color-active-edge: #fa5252;
+            --card-bg: #f8f9fa;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.85);
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.25);
+            --color-chamber: #339af0;
+            --color-house-face: rgba(92, 124, 250, 0.22);
+            --color-solid-cell: rgba(247, 103, 7, 0.18);
+            --color-active-cell: rgba(255, 107, 107, 0.45);
+            --color-active-edge: #ff6b6b;
+            --card-bg: #161920;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            bottom: 20px;
+            width: 380px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            z-index: 10;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .control-panel.collapsed {
+            transform: translateX(-420px);
+        }
+        .toggle-sidebar-btn {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            z-index: 9;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+        .toggle-sidebar-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .panel-header {
+            margin-bottom: 12px;
+        }
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: -0.02em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 12px;
+            gap: 2px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            opacity: 0.6;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .tab-btn:hover {
+            opacity: 1;
+        }
+        .tab-btn.active {
+            opacity: 1;
+            border-bottom-color: var(--accent);
+            color: var(--accent);
+        }
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        /* Custom scrollbar */
+        .panel-content::-webkit-scrollbar {
+            width: 5px;
+        }
+        .panel-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .panel-content::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        .slider-group {
+            margin-bottom: 12px;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .slider-label {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+            cursor: pointer;
+        }
+        .step-info {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .stats-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .stat-line:last-child {
+            margin-bottom: 0;
+        }
+        .stat-val {
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+        }
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .ctrl-btn {
+            flex: 1;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .ctrl-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .secondary-btn {
+            background: transparent;
+            border-style: dashed;
+        }
+        .instructions {
+            font-size: 10px;
+            padding: 8px;
+            background: var(--accent-glow);
+            color: var(--text-color);
+            border-radius: 6px;
+            border-left: 3px solid var(--accent);
+            line-height: 1.4;
+        }
+        .code-info, .math-info {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        pre {
+            margin: 0;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 10.5px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.45;
+        }
+        [data-theme="dark"] pre {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* Lean Syntax Highlighting */
+        .comment { color: #8a8a93; font-style: italic; }
+        .keyword { color: #d73a49; font-weight: bold; }
+        .type { color: #005cc5; }
+        .number { color: #005cc5; }
+        .operator { color: #d73a49; }
+        [data-theme="dark"] .keyword { color: #ff79c6; }
+        [data-theme="dark"] .type { color: #8be9fd; }
+        [data-theme="dark"] .number { color: #bd93f9; }
+        [data-theme="dark"] .operator { color: #ff79c6; }
+
+        .global-logic h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .global-logic p {
+            font-size: 11px;
+            line-height: 1.45;
+            margin: 0 0 10px 0;
+        }
+        .math-chain {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-family: 'Fira Code', monospace;
+            font-size: 10.5px;
+            margin: 8px 0;
+        }
+        
+        /* Math tab formulas */
+        .formula-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .formula-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+            color: var(--accent);
+        }
+        .formula-body {
+            font-size: 11px;
+            font-family: serif;
+            font-style: italic;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-sidebar-btn" id="toggle-sidebar-btn" onclick="toggleSidebar()" aria-label="Toggle sidebar">☰</button>
+
+    <div class="control-panel" id="sidebar">
+        <div class="panel-header">
+            <div class="panel-title">Bing's House Retraction</div>
+            <div class="panel-desc">
+                Visualizing the Lean 4 proof: retracting the solid box $Y_{24}$ onto Bing's House ($Y_0$) step-by-step ($C_{24} \to C_1$).
+            </div>
+        </div>
+
+        <div class="panel-tabs">
+            <button class="tab-btn active" id="tab-btn-control" onclick="switchTab('control')">Explorer</button>
+            <button class="tab-btn" id="tab-btn-code" onclick="switchTab('code')">Lean 4 Code</button>
+            <button class="tab-btn" id="tab-btn-math" onclick="switchTab('math')">Topological Logic</button>
+        </div>
+
+        <div class="panel-content">
+            <!-- TAB: CONTROL -->
+            <div class="tab-pane active" id="pane-control">
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Retraction Progress ($t$)</span>
+                        <span id="t-val" class="stat-val">0.00 / 24.00</span>
+                    </div>
+                    <input type="range" id="t-slider" min="0.0" max="24.0" step="0.05" value="0.0" oninput="updateT()">
+                </div>
+
+                <div class="btn-row">
+                    <button class="ctrl-btn" onclick="step(-1)">&larr; Prev Cell</button>
+                    <button class="ctrl-btn" onclick="togglePlay()" id="play-btn">Play</button>
+                    <button class="ctrl-btn" onclick="step(1)">Next Cell &rarr;</button>
+                </div>
+
+                <div class="step-info" id="step-info">
+                    <strong>Initial State:</strong> Solid $4 \times 3 \times 2$ box ($Y_{24}$). All 24 cells are solid.
+                </div>
+
+                <div class="stats-box">
+                    <div class="stat-line"><span>Remaining solid cells:</span><span id="solid-count" class="stat-val">24</span></div>
+                    <div class="stat-line"><span>Currently collapsing:</span><span id="active-cell" class="stat-val">None</span></div>
+                    <div class="stat-line"><span>Topology status:</span><span id="topo-status" class="stat-val" style="color: var(--accent);">Contractible</span></div>
+                </div>
+
+                <div class="btn-row" style="margin-top: 8px;">
+                    <button class="ctrl-btn secondary-btn" onclick="resetRotation()">Reset 3D View</button>
+                </div>
+
+                <div class="instructions" style="margin-top: 8px;">
+                    <strong>3D Navigation:</strong> Drag to rotate. Scroll to zoom. The active cell is highlighted in bright red.
+                </div>
+            </div>
+
+            <!-- TAB: CODE -->
+            <div class="tab-pane" id="pane-code">
+                <div class="code-info">
+                    This block shows the exact Lean 4 type definitions and formulas used in the proof for the currently active cell retraction.
+                </div>
+                <pre><code id="lean-code-block">-- Select a step to view Lean 4 code</code></pre>
+            </div>
+
+            <!-- TAB: MATH -->
+            <div class="tab-pane" id="pane-math">
+                <div class="math-info" id="math-explanation-block">
+                    <!-- Dynamic mathematical explanation -->
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+                <div class="global-logic">
+                    <h4>Global Proof Structure</h4>
+                    <p>The Lean proof establishes that Bing's House with Two Rooms ($Y_0$) is contractible by decomposing the solid box $Y_{24}$ into 24 cells $C_1 \dots C_{24}$ and composing their individual deformation retractions:</p>
+                    <div class="math-chain">
+                        Y_24 &rarr; Y_23 &rarr; Y_22 &rarr; ... &rarr; Y_0
+                    </div>
+                    <p>Where each intermediate subspace is defined as $Y_k = Y_{k-1} \cup C_k$. Topologically, $C_k$ is a closed 3-cell (homeomorphic to a 3D cube) that intersects the accumulated space $Y_{k-1}$ precisely along $F_k$, a contractible union of 4 or 5 of its boundary faces (homeomorphic to a 2D disk).</p>
+                    <p>Because the intersection is contractible, the deformation retraction $C_k \to F_k$ extends to a global deformation retraction of $Y_k$ onto $Y_{k-1}$. By composition, the entire solid box $Y_{24}$ deformation retracts onto Bing's House $Y_0$. Since the solid box is convex and contractible, Bing's House is contractible.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let t = 0.0;
+        let angleX = 0.5;
+        let angleY = 0.6;
+        let zoom = 1.0;
+        let isDragging = false;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+        let playInterval = null;
+
+        // Definition of the 24 cells C_1 to C_24 from Lean 4 proof
+        const cells = [
+            { id: 1,  x: [1,2], y: [2,3], z: [1,2], open: ['x1'], desc: "Retracts C_1 from open face x=1 onto the other 5 faces, completing the entire hollowing down to Bing's House." },
+            { id: 2,  x: [2,3], y: [2,3], z: [0,1], open: ['x2'], desc: "Retracts C_2 from open face x=3 onto the other 5 faces, completing the lower floor hollowing of the right room." },
+            { id: 3,  x: [0,1], y: [2,3], z: [1,2], open: ['y1'], desc: "Retracts C_3 from open face y=2 onto the other 5 faces, extending the hollowing into the back-left corner of the upper floor." },
+            { id: 4,  x: [0,1], y: [1,2], z: [1,2], open: ['y1'], desc: "Retracts C_4 from open face y=1 onto the other 5 faces, extending the hollowing backward along the upper-left outer wall." },
+            { id: 5,  x: [0,1], y: [0,1], z: [1,2], open: ['x2'], desc: "Retracts C_5 from open face x=1 onto the other 5 faces, extending the upper floor hollowing to the front-left outer boundary." },
+            { id: 6,  x: [1,2], y: [0,1], z: [1,2], open: ['x2'], desc: "Retracts C_6 from open face x=2 onto the other 5 faces, connecting the front upper floor of the left room to the dividing wall." },
+            { id: 7,  x: [3,4], y: [2,3], z: [0,1], open: ['y1'], desc: "Retracts C_7 from open face y=2 onto the other 5 faces, extending the hollowing into the back-right corner of the lower floor." },
+            { id: 8,  x: [3,4], y: [1,2], z: [0,1], open: ['y1'], desc: "Retracts C_8 from open face y=1 onto the other 5 faces, extending the hollowing backward along the lower-right outer wall." },
+            { id: 9,  x: [3,4], y: [0,1], z: [0,1], open: ['x1'], desc: "Retracts C_9 from open face x=3 onto the other 5 faces, extending the lower floor hollowing to the outer right boundary." },
+            { id: 10, x: [2,3], y: [0,1], z: [0,1], open: ['x1'], desc: "Retracts C_10 from open face x=2 onto the other 5 faces, extending the hollowing across the dividing wall into the lower-right front corner." },
+            { id: 11, x: [1,2], y: [2,3], z: [0,1], open: ['x1', 'y1'], desc: "Retracts C_11 from two open faces (x=1, y=2) onto its remaining 4 faces, completing the lower floor hollowing of the left room." },
+            { id: 12, x: [0,1], y: [2,3], z: [0,1], open: ['y1'], desc: "Retracts C_12 from open face y=2 onto the other 5 faces, extending the tunnel backward into the back-left of the lower floor." },
+            { id: 13, x: [0,1], y: [1,2], z: [0,1], open: ['x2', 'y1'], desc: "Retracts C_13 from two open faces (x=1, y=1) onto its remaining 4 faces, hollowing out the center-left lower floor." },
+            { id: 14, x: [0,1], y: [0,1], z: [0,1], open: ['x2'], desc: "Retracts C_14 from open face x=1 onto the other 5 faces, extending the tunnel leftward to the outer boundary." },
+            { id: 15, x: [1,2], y: [0,1], z: [0,1], open: ['y2'], desc: "Retracts C_15 from open face y=1 onto the other 5 faces, turning the top tunnel forward towards the front wall." },
+            { id: 16, x: [1,2], y: [1,2], z: [0,1], open: ['z2'], desc: "Retracts C_16 from open face z=1 onto the other 5 faces, extending the top tunnel downward into the lower floor." },
+            { id: 17, x: [1,2], y: [1,2], z: [1,2], open: ['z2'], desc: "Retracts C_17 from open face z=2 onto the other 5 faces, initiating the top tunnel in the left room." },
+            { id: 18, x: [2,3], y: [0,1], z: [1,2], open: ['x2', 'y2'], desc: "Retracts C_18 from two open faces (x=3, y=1) onto its remaining 4 faces, completing the front loop of the tunnel." },
+            { id: 19, x: [3,4], y: [0,1], z: [1,2], open: ['y2'], desc: "Retracts C_19 from open face y=1 onto the other 5 faces, extending the tunnel forward into the front-right of the upper floor." },
+            { id: 20, x: [3,4], y: [2,3], z: [1,2], open: ['x1', 'y1'], desc: "Retracts C_20 from two open faces (x=3, y=2) onto its remaining 4 faces, merging the rightward and backward tunnel branches." },
+            { id: 21, x: [2,3], y: [2,3], z: [1,2], open: ['y1'], desc: "Retracts C_21 from open face y=2 onto the other 5 faces, extending the tunnel backward into the back-middle of the upper floor." },
+            { id: 22, x: [3,4], y: [1,2], z: [1,2], open: ['x1'], desc: "Retracts C_22 from open face x=3 onto the other 5 faces, turning the bottom tunnel rightward towards the outer wall." },
+            { id: 23, x: [2,3], y: [1,2], z: [1,2], open: ['z1'], desc: "Retracts C_23 from open face z=1 onto the other 5 faces, extending the bottom tunnel upward into the upper floor." },
+            { id: 24, x: [2,3], y: [1,2], z: [0,1], open: ['z1'], desc: "Retracts C_24 from open face z=0 onto the other 5 faces, initiating the bottom tunnel in the right room." }
+        ];
+
+        // Specific mathematical explanations from the proof steps
+        const cellMathExplanations = {
+            24: "This step initiates the <strong>bottom tunnel</strong>. We retract $C_{24}$ onto its 5 closed boundary faces, leaving the face at $z=0$ open. This creates the entrance to the lower tunnel from the bottom face of the right room.",
+            23: "Extends the bottom tunnel upwards into the middle layer by retracting $C_{23}$ towards the top ($z=2$) and side walls. The bottom face ($z=1$) is open from the previous step.",
+            22: "Turns the bottom tunnel rightwards towards the outer wall. It retracts $C_{22}$ away from the open face $x=3$, continuing the lower tunnel path.",
+            21: "Extends the tunnel backward into the back-middle of the upper floor by retracting $C_{21}$ away from the open face $y=2$.",
+            20: "This cell merges two tunnel branches! $C_{20}$ has <strong>two open faces</strong> ($x=3$ and $y=2$). Retracting it onto the remaining 4 faces connects the rightward and backward branches of the tunnel.",
+            19: "Extends the tunnel forward into the front-right of the upper floor by retracting $C_{19}$ away from the open face $y=1$.",
+            18: "Merges the front loop of the tunnel. It has <strong>two open faces</strong> ($x=3$ and $y=1$), connecting the frontward tunnel branch with the main chamber.",
+            17: "This step initiates the <strong>top tunnel</strong>. We retract $C_{17}$ onto its 5 closed boundary faces, leaving the face at $z=2$ open. This creates the entrance to the upper tunnel from the top ceiling of the left room.",
+            16: "Extends the top tunnel downwards into the lower floor. The top face ($z=1$) is open from the previous step, and we retract $C_{16}$ onto the bottom and side faces.",
+            15: "Turns the top tunnel forward towards the front wall. It retracts $C_{15}$ away from the open face $y=1$ ($y2$).",
+            14: "Extends the top tunnel leftward to the outer boundary wall, retracting $C_{14}$ away from the open face $x=1$ ($x2$).",
+            13: "Merges the center-left lower floor. It has <strong>two open faces</strong> ($x=1$ and $y=1$), joining the leftward tunnel extension and the back-left room.",
+            12: "Extends the tunnel backward into the back-left of the lower floor, retracting $C_{12}$ away from the open face $y=2$ ($y1$).",
+            11: "Merges the lower floor hollowing of the left room. It has <strong>two open faces</strong> ($x=1$ and $y=2$), connecting the bottom tunnel's end with the main left chamber.",
+            10: "Extends the hollowing across the dividing wall into the lower-right front corner by retracting $C_{10}$ away from the open face $x=2$ ($x1$).",
+            9: "Extends the lower floor hollowing to the outer right boundary, retracting $C_9$ away from the open face $x=3$ ($x1$).",
+            8: "Extends the hollowing backward along the lower-right outer wall by retracting $C_8$ away from the open face $y=1$ ($y1$).",
+            7: "Extends the hollowing into the back-right corner of the lower floor, retracting $C_7$ away from the open face $y=2$ ($y1$).",
+            6: "Connects the front upper floor of the left room to the dividing wall, retracting $C_6$ away from the open face $x=2$ ($x2$).",
+            5: "Extends the upper floor hollowing to the front-left outer boundary, retracting $C_5$ away from the open face $x=1$ ($x2$).",
+            4: "Extends the hollowing backward along the upper-left outer wall, retracting $C_4$ away from the open face $y=1$ ($y1$).",
+            3: "Extends the hollowing into the back-left corner of the upper floor, retracting $C_3$ away from the open face $y=2$ ($y1$).",
+            2: "Completes the lower floor hollowing of the right room by retracting $C_2$ away from the open face $x=3$ ($x2$).",
+            1: "The final step! We retract $C_1$ away from the open face $x=1$ ($x1$), completing the entire hollowing sequence. We are left with exactly Bing's House ($Y_0$)."
+        };
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateT() {
+            t = parseFloat(document.getElementById('t-slider').value);
+            document.getElementById('t-val').textContent = `${t.toFixed(2)} / 24.00`;
+            updateStepInfo();
+            updateActiveTabContent();
+            draw();
+        }
+
+        function updateStepInfo() {
+            const infoEl = document.getElementById('step-info');
+            const solidCountEl = document.getElementById('solid-count');
+            const activeCellEl = document.getElementById('active-cell');
+
+            const idx = Math.floor(t);
+            const remaining = 24 - idx;
+            solidCountEl.textContent = remaining;
+
+            if (t >= 24) {
+                infoEl.innerHTML = `<strong>Final State (Bing's House $Y_0$):</strong> All 24 cells hollowed out. We are left with a 2D contractible space inside the cube.`;
+                activeCellEl.textContent = "None";
+            } else {
+                const cell = cells[23 - idx];
+                const activeProgress = (t - idx) * 100;
+                activeCellEl.textContent = `C_${cell.id}`;
+                infoEl.innerHTML = `
+                    <strong>Retracting $C_{${cell.id}}$:</strong> (${idx + 1}/24)<br>
+                    Coordinates: [${cell.x.join(',')}] × [${cell.y.join(',')}] × [${cell.z.join(',')}]<br>
+                    <em>${cell.desc}</em><br>
+                    Collapse progress: <strong>${activeProgress.toFixed(0)}%</strong>
+                `;
+            }
+        }
+
+        function step(dir) {
+            let nextT = Math.floor(t) + dir;
+            if (nextT < 0) nextT = 0;
+            if (nextT > 24) nextT = 24;
+            t = nextT;
+            document.getElementById('t-slider').value = t;
+            updateT();
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+                btn.textContent = "Play";
+            } else {
+                btn.textContent = "Pause";
+                playInterval = setInterval(() => {
+                    t += 0.05;
+                    if (t >= 24) {
+                        t = 0;
+                    }
+                    document.getElementById('t-slider').value = t;
+                    updateT();
+                }, 50);
+            }
+        }
+
+        function resetRotation() {
+            angleX = 0.5;
+            angleY = 0.6;
+            zoom = 1.0;
+            draw();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // Tab switching
+        let activeTab = 'control';
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+            if (tabId === 'control') {
+                document.getElementById('tab-btn-control').classList.add('active');
+                document.getElementById('pane-control').classList.add('active');
+            } else if (tabId === 'code') {
+                document.getElementById('tab-btn-code').classList.add('active');
+                document.getElementById('pane-code').classList.add('active');
+                updateCodeTab();
+            } else if (tabId === 'math') {
+                document.getElementById('tab-btn-math').classList.add('active');
+                document.getElementById('pane-math').classList.add('active');
+                updateMathTab();
+            }
+        }
+
+        function updateActiveTabContent() {
+            if (activeTab === 'code') updateCodeTab();
+            if (activeTab === 'math') updateMathTab();
+        }
+
+        function escapeHTML(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function highlightLean(code) {
+            return code
+                .replace(/(--.*)/g, '<span class="comment">$1</span>')
+                .replace(/\b(def|theorem|noncomputable|lemma|by|have|exact|intro|let|in|namespace|open|import|rfl|if|then|else)\b/g, '<span class="keyword">$1</span>')
+                .replace(/\b(ℝ|Set|Icc|Ioo|Ioc|Ico|HouseWithTwoRooms|ContinuousMap|ℝ × ℝ × ℝ)\b/g, '<span class="type">$1</span>')
+                .replace(/\b([0-9]+(?:\.[0-9]+)?)\b/g, '<span class="number">$1</span>')
+                .replace(/([=+|∨∧:\\→⊆∪∩\\])/g, '<span class="operator">$1</span>');
+        }
+
+        function generateLeanCode(cell) {
+            const k = cell.id;
+            const xMin = cell.x[0], xMax = cell.x[1];
+            const yMin = cell.y[0], yMax = cell.y[1];
+            const zMin = cell.z[0], zMax = cell.z[1];
+
+            let code = ``;
+            code += `-- Definition of cell C_${k}\n`;
+            code += `def C_${k} : Set (ℝ × ℝ × ℝ) :=\n  Icc (${xMin}:ℝ) ${xMax} ×ˢ Icc (${yMin}:ℝ) ${yMax} ×ˢ Icc (${zMin}:ℝ) ${zMax}\n\n`;
+
+            // Generate boundary F_k condition
+            let faces = [];
+            if (!cell.open.includes('x1')) faces.push(`p.1 = (${xMin} : ℝ)`);
+            if (!cell.open.includes('x2')) faces.push(`p.1 = (${xMax} : ℝ)`);
+            if (!cell.open.includes('y1')) faces.push(`p.2.1 = (${yMin} : ℝ)`);
+            if (!cell.open.includes('y2')) faces.push(`p.2.1 = (${yMax} : ℝ)`);
+            if (!cell.open.includes('z1')) faces.push(`p.2.2 = (${zMin} : ℝ)`);
+            if (!cell.open.includes('z2')) faces.push(`p.2.2 = (${zMax} : ℝ)`);
+
+            code += `-- Boundary target subset F_${k}\n`;
+            code += `def F_${k} : Set (ℝ × ℝ × ℝ) :=\n  { p ∈ C_${k} | ${faces.join(' ∨ ')} }\n\n`;
+
+            // Distance function S_k
+            function getTerm(axis, minVal, open1, open2, idx) {
+                if (cell.open.includes(open1)) {
+                    return `((2 + (2 * p.${idx} - 2 * (${minVal} : ℝ) - 1)) / 3)`;
+                } else if (cell.open.includes(open2)) {
+                    return `((2 - (2 * p.${idx} - 2 * (${minVal} : ℝ) - 1)) / 3)`;
+                } else {
+                    return `|(2 * p.${idx} - 2 * (${minVal} : ℝ) - 1)|`;
+                }
+            }
+
+            const tx = getTerm('x', xMin, 'x1', 'x2', '1');
+            const ty = getTerm('y', yMin, 'y1', 'y2', '2.1');
+            const tz = getTerm('z', zMin, 'z1', 'z2', '2.2');
+
+            let openAxes = [];
+            if (cell.open.includes('x1') || cell.open.includes('x2')) openAxes.push('x');
+            if (cell.open.includes('y1') || cell.open.includes('y2')) openAxes.push('y');
+            if (cell.open.includes('z1') || cell.open.includes('z2')) openAxes.push('z');
+
+            let sFormula = '';
+            if (openAxes.length === 1) {
+                if (openAxes[0] === 'x') sFormula = `max (max ${ty} ${tz}) ${tx}`;
+                else if (openAxes[0] === 'y') sFormula = `max (max ${tx} ${tz}) ${ty}`;
+                else if (openAxes[0] === 'z') sFormula = `max (max ${tx} ${ty}) ${tz}`;
+            } else {
+                let closedAxis = 'x';
+                if (openAxes.includes('x') && openAxes.includes('y')) closedAxis = 'z';
+                else if (openAxes.includes('x') && openAxes.includes('z')) closedAxis = 'y';
+                else if (openAxes.includes('y') && openAxes.includes('z')) closedAxis = 'x';
+
+                if (closedAxis === 'x') sFormula = `max (max ${ty} ${tz}) ${tx}`;
+                else if (closedAxis === 'y') sFormula = `max (max ${tx} ${tz}) ${ty}`;
+                else if (closedAxis === 'z') sFormula = `max (max ${tx} ${ty}) ${tz}`;
+            }
+
+            code += `-- Distance function S_${k}\n`;
+            code += `noncomputable def S_${k} (p : ℝ × ℝ × ℝ) : ℝ :=\n  ${sFormula}\n\n`;
+
+            // Proj function
+            function getProjTerm(axis, minVal, open1, open2, idx) {
+                if (cell.open.includes(open1)) {
+                    return `(${minVal} : ℝ) + (1/2 : ℝ) + ((-2 : ℝ) + ((2 * p.${idx} - 2 * (${minVal} : ℝ) - 1) - (-2 : ℝ)) / S_${k} p) / 2`;
+                } else if (cell.open.includes(open2)) {
+                    return `(${minVal} : ℝ) + (1/2 : ℝ) + ((2 : ℝ) + ((2 * p.${idx} - 2 * (${minVal} : ℝ) - 1) - (2 : ℝ)) / S_${k} p) / 2`;
+                } else {
+                    return `(${minVal} : ℝ) + (1/2 : ℝ) + ((2 * p.${idx} - 2 * (${minVal} : ℝ) - 1) / S_${k} p) / 2`;
+                }
+            }
+
+            const pX = getProjTerm('x', xMin, 'x1', 'x2', '1');
+            const pY = getProjTerm('y', yMin, 'y1', 'y2', '2.1');
+            const pZ = getProjTerm('z', zMin, 'z1', 'z2', '2.2');
+
+            code += `-- Projection map proj_${k}\n`;
+            code += `noncomputable def proj_${k} (p : ℝ × ℝ × ℝ) : ℝ × ℝ × ℝ :=\n  (\n    ${pX},\n    ${pY},\n    ${pZ}\n  )\n\n`;
+            code += `-- Lemmas verified in proof\n`;
+            code += `lemma proj_${k}_id (p : ℝ × ℝ × ℝ) (hp : p ∈ F_${k}) : proj_${k} p = p\n`;
+            code += `lemma proj_${k}_img (p : ℝ × ℝ × ℝ) (hp : p ∈ C_${k}) : proj_${k} p ∈ F_${k}\n`;
+            code += `lemma proj_${k}_cont : ContinuousOn proj_${k} C_${k}`;
+
+            return code;
+        }
+
+        function updateCodeTab() {
+            const codeBlock = document.getElementById('lean-code-block');
+            const idx = Math.floor(t);
+            if (t >= 24) {
+                codeBlock.innerHTML = `<span class="comment">-- Final State: Bing's House Y_0 reached.\n-- The total retraction is composed as:\nnoncomputable def r_total (p : ℝ × ℝ × ℝ) : ℝ × ℝ × ℝ :=\n  (r_1 (r_2 (r_3 (r_4 (r_5 (r_6 (r_7 (r_8 (r_9 (r_10 (r_11 (r_12 (r_13 (r_14 (r_15 (r_16 (r_17 (r_18 (r_19 (r_20 (r_21 (r_22 (r_23 (r_24 p))))))))))))))))))))))))</span>`;
+            } else {
+                const cell = cells[23 - idx];
+                const rawCode = generateLeanCode(cell);
+                codeBlock.innerHTML = highlightLean(escapeHTML(rawCode));
+            }
+        }
+
+        function updateMathTab() {
+            const mathBlock = document.getElementById('math-explanation-block');
+            const idx = Math.floor(t);
+            if (t >= 24) {
+                mathBlock.innerHTML = `
+                    <h3 style="margin-top:0;">Final State ($Y_0$): Bing's House</h3>
+                    <p>All 24 cells have been hollowed out. We are left with the 2D surface $Y_0 = \\text{HouseWithTwoRooms}$.</p>
+                    <p>By composing all 24 individual retractions, we obtain a continuous map $r_{\\text{total}} : Y_{24} \\to Y_0$ which is the identity on $Y_0$. This proves that $Y_0$ is a retract of the contractible space $Y_{24}$, and thus contractible itself.</p>
+                `;
+            } else {
+                const cell = cells[23 - idx];
+                const explanation = cellMathExplanations[cell.id] || "No explanation available.";
+                const openFacesText = cell.open.map(f => {
+                    const dir = f[0];
+                    const side = f[1] === '1' ? 'lower' : 'upper';
+                    return `<code>${dir} = ${side === 'lower' ? cell[dir][0] : cell[dir][1]}</code>`;
+                }).join(' and ');
+
+                mathBlock.innerHTML = `
+                    <h3 style="margin-top:0;">Step ${idx + 1}: Retracting cell $C_{${cell.id}}$</h3>
+                    <p><strong>Cell coordinates:</strong> $[${cell.x.join(',')}] \\times [${cell.y.join(',')}] \\times [${cell.z.join(',')}]$</p>
+                    <p><strong>Open faces (retraction source):</strong> ${openFacesText}</p>
+                    <p>${explanation}</p>
+                    <p><strong>Topological justification:</strong> The intersection $C_{${cell.id}} \\cap Y_{${23 - idx}}$ is exactly the boundary set $F_{${cell.id}}$ (consisting of the other ${6 - cell.open.length} closed faces of the cell). Since $F_{${cell.id}}$ is homeomorphic to a 2D disk, it is contractible. The deformation retraction of the 3D cell onto $F_{${cell.id}}$ is defined by the formulas shown in the <em>Lean 4 Code</em> tab.</p>
+                `;
+            }
+        }
+
+        // Drag controls for 3D rotation
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - prevMouseX;
+            const dy = e.clientY - prevMouseY;
+            angleY += dx * 0.007;
+            angleX += dy * 0.007;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+            draw();
+        });
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            isDragging = true;
+            prevMouseX = e.touches[0].clientX;
+            prevMouseY = e.touches[0].clientY;
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const dx = e.touches[0].clientX - prevMouseX;
+            const dy = e.touches[0].clientY - prevMouseY;
+            angleY += dx * 0.007;
+            angleX += dy * 0.007;
+            prevMouseX = e.touches[0].clientX;
+            prevMouseY = e.touches[0].clientY;
+            draw();
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Scroll to zoom
+        canvas.addEventListener('wheel', (e) => {
+            zoom -= e.deltaY * 0.001;
+            if (zoom < 0.3) zoom = 0.3;
+            if (zoom > 3.0) zoom = 3.0;
+            draw();
+            e.preventDefault();
+        }, { passive: false });
+
+        // 3D Projection
+        function project3D(x, y, z, cx, cy, scale) {
+            const px = x - 2.0;
+            const py = y - 1.5;
+            const pz = z - 1.0;
+
+            let y1 = py * Math.cos(angleX) - pz * Math.sin(angleX);
+            let z1 = py * Math.sin(angleX) + pz * Math.cos(angleX);
+            
+            let x2 = px * Math.cos(angleY) + z1 * Math.sin(angleY);
+            let z2 = -px * Math.sin(angleY) + z1 * Math.cos(angleY);
+
+            return {
+                x: cx + x2 * scale,
+                y: cy - y1 * scale,
+                depth: z2
+            };
+        }
+
+        // Generates the vertices of a cube, deformed according to retraction progress
+        function getCubePolygons(cell, progress, isActive) {
+            let x1 = cell.x[0], x2 = cell.x[1];
+            let y1 = cell.y[0], y2 = cell.y[1];
+            let z1 = cell.z[0], z2 = cell.z[1];
+
+            if (isActive && progress > 0) {
+                cell.open.forEach(op => {
+                    if (op === 'x1') x1 = x1 + (x2 - x1) * progress;
+                    if (op === 'x2') x2 = x2 - (x2 - x1) * progress;
+                    if (op === 'y1') y1 = y1 + (y2 - y1) * progress;
+                    if (op === 'y2') y2 = y2 - (y2 - y1) * progress;
+                    if (op === 'z1') z1 = z1 + (z2 - z1) * progress;
+                    if (op === 'z2') z2 = z2 - (z2 - z1) * progress;
+                });
+            }
+
+            return [
+                { dir: 'x', coord: x1, u: [y1, y2], v: [z1, z2], pts: [[x1,y1,z1], [x1,y2,z1], [x1,y2,z2], [x1,y1,z2]] },
+                { dir: 'x', coord: x2, u: [y1, y2], v: [z1, z2], pts: [[x2,y1,z1], [x2,y2,z1], [x2,y2,z2], [x2,y1,z2]] },
+                { dir: 'y', coord: y1, u: [x1, x2], v: [z1, z2], pts: [[x1,y1,z1], [x2,y1,z1], [x2,y1,z2], [x1,y1,z2]] },
+                { dir: 'y', coord: y2, u: [x1, x2], v: [z1, z2], pts: [[x1,y2,z1], [x2,y2,z1], [x2,y2,z2], [x1,y2,z2]] },
+                { dir: 'z', coord: z1, u: [x1, x2], v: [y1, y2], pts: [[x1,y1,z1], [x2,y1,z1], [x2,y2,z1], [x1,y2,z1]] },
+                { dir: 'z', coord: z2, u: [x1, x2], v: [y1, y2], pts: [[x1,y1,z2], [x2,y1,z2], [x2,y2,z2], [x1,y2,z2]] }
+            ];
+        }
+
+        // Checks if a point (specifically face center) is part of Bing's House definition
+        function isPointInHouse(x, y, z) {
+            if (Math.abs(z - 0) < 1e-5 || Math.abs(z - 1) < 1e-5 || Math.abs(z - 2) < 1e-5) {
+                if (x >= 0 && x <= 4 && y >= 0 && y <= 3) {
+                    if (Math.abs(z - 0) < 1e-5 && x > 2 && x < 3 && y > 1 && y < 2) return false;
+                    if (Math.abs(z - 1) < 1e-5 && x > 1 && x < 3 && y > 1 && y < 2) return false;
+                    if (Math.abs(z - 2) < 1e-5 && x > 1 && x < 2 && y > 1 && y < 2) return false;
+                    return true;
+                }
+            }
+
+            if (Math.abs(x - 1) < 1e-5 && y >= 1 && y <= 2 && z >= 1 && z <= 2) return true;
+            if (Math.abs(x - 2) < 1e-5 && y >= 1 && y <= 3 && z >= 0 && z <= 2) return true;
+            if (Math.abs(x - 3) < 1e-5 && y >= 1 && y <= 2 && z >= 0 && z <= 1) return true;
+            if ((Math.abs(y - 1) < 1e-5 || Math.abs(y - 2) < 1e-5) && x >= 1 && x <= 2 && z >= 1 && z <= 2) return true;
+            if ((Math.abs(y - 1) < 1e-5 || Math.abs(y - 2) < 1e-5) && x >= 2 && x <= 3 && z >= 0 && z <= 1) return true;
+
+            if ((Math.abs(y - 0) < 1e-5 || Math.abs(y - 3) < 1e-5) && x >= 0 && x <= 4 && z >= 0 && z <= 2) return true;
+            if ((Math.abs(x - 0) < 1e-5 || Math.abs(x - 4) < 1e-5) && y >= 0 && y <= 3 && z >= 0 && z <= 2) return true;
+
+            return false;
+        }
+
+        // Checks if a unit face is part of Bing's House
+        function isFaceInHouse(f) {
+            const cx = (f.pts[0][0] + f.pts[2][0]) / 2;
+            const cy = (f.pts[0][1] + f.pts[2][1]) / 2;
+            const cz = (f.pts[0][2] + f.pts[2][2]) / 2;
+            return isPointInHouse(cx, cy, cz);
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            
+            const houseFaceColor = styles.getPropertyValue('--color-house-face').trim();
+            const solidCellColor = styles.getPropertyValue('--color-solid-cell').trim();
+            const activeCellColor = styles.getPropertyValue('--color-active-cell').trim();
+            const activeEdgeColor = styles.getPropertyValue('--color-active-edge').trim();
+
+            const isCollapsed = document.getElementById('sidebar').classList.contains('collapsed');
+            const clearSpace = (w > 800 && !isCollapsed) ? 420 : 0;
+            const cx = clearSpace + (w - clearSpace) / 2;
+            const cy = h / 2;
+            const scale = Math.min(w - clearSpace, h) * 0.14 * zoom;
+
+            const idx = Math.floor(t);
+            const progress = t - idx;
+
+            const polygons = [];
+            const outerEdges = [
+                [0,0,0, 4,0,0], [4,0,0, 4,3,0], [4,3,0, 0,3,0], [0,3,0, 0,0,0],
+                [0,0,2, 4,0,2], [4,0,2, 4,3,2], [4,3,2, 0,3,2], [0,3,2, 0,0,2],
+                [0,0,0, 0,0,2], [4,0,0, 4,0,2], [4,3,0, 4,3,2], [0,3,0, 0,3,2]
+            ];
+
+            cells.forEach(cell => {
+                const cellIdx = 24 - cell.id;
+                const isSolid = cellIdx > idx;
+                const isActive = cellIdx === idx;
+
+                if (isSolid) {
+                    const faces = getCubePolygons(cell, 0, false);
+                    faces.forEach(f => {
+                        polygons.push({
+                            type: 'solid-cell',
+                            pts: f.pts,
+                            color: solidCellColor,
+                            edgeColor: borderColor + "22"
+                        });
+                    });
+                } else if (isActive) {
+                    const faces = getCubePolygons(cell, progress, true);
+                    faces.forEach(f => {
+                        polygons.push({
+                            type: 'active-cell',
+                            pts: f.pts,
+                            color: activeCellColor,
+                            edgeColor: activeEdgeColor
+                        });
+                    });
+                } else {
+                    const faces = getCubePolygons(cell, 0, false);
+                    faces.forEach(f => {
+                        if (isFaceInHouse(f)) {
+                            polygons.push({
+                                type: 'house-face',
+                                pts: f.pts,
+                                color: houseFaceColor,
+                                edgeColor: borderColor + "77"
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Projection & sorting
+            const projectedPolys = [];
+            polygons.forEach(p => {
+                const projPts = p.pts.map(pt => project3D(pt[0], pt[1], pt[2], cx, cy, scale));
+                const avgDepth = projPts.reduce((acc, curr) => acc + curr.depth, 0) / projPts.length;
+                projectedPolys.push({
+                    pts: projPts,
+                    depth: avgDepth,
+                    color: p.color,
+                    edgeColor: p.edgeColor,
+                    type: p.type
+                });
+            });
+
+            projectedPolys.sort((a, b) => b.depth - a.depth);
+
+            projectedPolys.forEach(p => {
+                ctx.beginPath();
+                ctx.moveTo(p.pts[0].x, p.pts[0].y);
+                for (let i = 1; i < p.pts.length; i++) {
+                    ctx.lineTo(p.pts[i].x, p.pts[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = p.color;
+                ctx.fill();
+
+                ctx.strokeStyle = p.edgeColor;
+                ctx.lineWidth = p.type === 'active-cell' ? 2 : 1;
+                ctx.stroke();
+            });
+
+            outerEdges.forEach(e => {
+                const p1 = project3D(e[0], e[1], e[2], cx, cy, scale);
+                const p2 = project3D(e[3], e[4], e[5], cx, cy, scale);
+                ctx.beginPath();
+                ctx.strokeStyle = textColor + "22";
+                ctx.lineWidth = 1;
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            });
+        }
+
+        // Initialize UI
+        updateT();
+        resize();
+    </script>
+</body>
+</html>

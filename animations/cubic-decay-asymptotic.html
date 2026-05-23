@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cubic ODE Decay Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-y: #228be6; /* Blue for y(t) */
+            --color-ysqrt: #fa5252; /* Red for y(t)*sqrt(t) */
+            --color-limit: #be4bdb; /* Purple for limit */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-y: #339af0;
+            --color-ysqrt: #ff6b6b;
+            --color-limit: #d0bfff;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .slider-group {
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Cubic ODE Decay Explorer</div>
+        <div class="panel-desc">
+            Visualizing the solution to $y' = -y^3$ and the asymptotic convergence of $y(t)\sqrt{t} \to 1/\sqrt{2} \approx 0.707$.
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Initial Condition y(0)</span>
+                <span id="y0-val">1.00</span>
+            </div>
+            <input type="range" id="y0-slider" min="0.1" max="2.0" step="0.05" value="1.0" oninput="updateY0()">
+        </div>
+
+        <div class="stat-line"><span>ODE:</span><span class="stat-val">y' = -y³</span></div>
+        <div class="stat-line"><span>Asymptotic limit:</span><span class="stat-val" style="color: var(--color-limit);">1/&radic;2 &approx; 0.707</span></div>
+        <div class="stat-line">
+            <span>y(10):</span>
+            <span id="y-final-val" class="stat-val" style="color: var(--color-y);">0.22</span>
+        </div>
+        <div class="stat-line">
+            <span>y(10)*&radic;10:</span>
+            <span id="ysqrt-final-val" class="stat-val" style="color: var(--color-ysqrt);">0.69</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let y0 = 1.0;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateY0() {
+            y0 = parseFloat(document.getElementById('y0-slider').value);
+            document.getElementById('y0-val').textContent = y0.toFixed(2);
+            draw();
+        }
+
+        // Analytical solution: y(t) = y0 / sqrt(2 * y0^2 * t + 1)
+        function solveY(t, yInit) {
+            return yInit / Math.sqrt(2 * yInit * yInit * t + 1);
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorY = styles.getPropertyValue('--color-y').trim();
+            const colorYSqrt = styles.getPropertyValue('--color-ysqrt').trim();
+            const colorLimit = styles.getPropertyValue('--color-limit').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40;
+            const originY = h - 50;
+
+            const tMax = 10;
+            const valMax = 2.2;
+            const toScreenX = (t) => originX + (t / tMax) * graphW;
+            const toScreenY = (v) => originY - (v / valMax) * graphH;
+
+            // Update stats
+            const y10 = solveY(tMax, y0);
+            const ysqrt10 = y10 * Math.sqrt(tMax);
+            document.getElementById('y-final-val').textContent = y10.toFixed(3);
+            document.getElementById('ysqrt-final-val').textContent = ysqrt10.toFixed(3);
+
+            // Axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(tMax), toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(0), toScreenY(valMax));
+            ctx.stroke();
+
+            // Grid Lines (Horizontal & Vertical)
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "33";
+            ctx.lineWidth = 1;
+            for (let t = 2; t <= tMax; t += 2) {
+                ctx.moveTo(toScreenX(t), toScreenY(0));
+                ctx.lineTo(toScreenX(t), toScreenY(valMax));
+            }
+            for (let v = 0.5; v <= valMax; v += 0.5) {
+                ctx.moveTo(toScreenX(0), toScreenY(v));
+                ctx.lineTo(toScreenX(tMax), toScreenY(v));
+            }
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("t", toScreenX(tMax) + 15, toScreenY(0) + 4);
+            ctx.fillText("y", toScreenX(0) - 15, toScreenY(valMax) - 5);
+
+            // Limit line: 1/sqrt(2)
+            const limVal = 1 / Math.sqrt(2);
+            ctx.beginPath();
+            ctx.strokeStyle = colorLimit;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+            ctx.moveTo(toScreenX(0), toScreenY(limVal));
+            ctx.lineTo(toScreenX(tMax), toScreenY(limVal));
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = colorLimit;
+            ctx.font = "bold 10px monospace";
+            ctx.textAlign = "left";
+            ctx.fillText("1/√2 ≈ 0.707", toScreenX(0.2), toScreenY(limVal) - 6);
+
+            // Build paths
+            const pointsY = [];
+            const pointsYSqrt = [];
+            const steps = 200;
+            for (let i = 0; i <= steps; i++) {
+                const t = (i / steps) * tMax;
+                const y = solveY(t, y0);
+                pointsY.push({ t, v: y });
+                pointsYSqrt.push({ t, v: y * Math.sqrt(t) });
+            }
+
+            // Draw y(t) (blue)
+            ctx.beginPath();
+            ctx.strokeStyle = colorY;
+            ctx.lineWidth = 2.5;
+            pointsY.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(toScreenX(pt.t), toScreenY(pt.v));
+                else ctx.lineTo(toScreenX(pt.t), toScreenY(pt.v));
+            });
+            ctx.stroke();
+
+            // Draw y(t)*sqrt(t) (red)
+            ctx.beginPath();
+            ctx.strokeStyle = colorYSqrt;
+            ctx.lineWidth = 2.5;
+            pointsYSqrt.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(toScreenX(pt.t), toScreenY(pt.v));
+                else ctx.lineTo(toScreenX(pt.t), toScreenY(pt.v));
+            });
+            ctx.stroke();
+
+            // Labels on curves
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillStyle = colorY;
+            ctx.fillText("y(t)", toScreenX(1), toScreenY(solveY(1, y0)) - 10);
+            ctx.fillStyle = colorYSqrt;
+            ctx.fillText("y(t)√t", toScreenX(3), toScreenY(solveY(3, y0) * Math.sqrt(3)) + 15);
+        }
+
+        // Initialize UI and draw
+        updateY0();
+        resize();
+    </script>
+</body>
+</html>

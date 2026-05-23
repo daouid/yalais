@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Linear ODE Stability Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --trajectory-color: #228be6;
+            --vector-color: #ced4da;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --trajectory-color: #5c7cfa;
+            --vector-color: #343a40;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 290px;
+            width: calc(32% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .select-group {
+            margin-bottom: 12px;
+        }
+        .select-label {
+            font-size: 10px;
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 600;
+        }
+        select {
+            width: 100%;
+            padding: 6px;
+            background: var(--node-default);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Linear ODE Stability</div>
+        <div class="panel-desc">
+            Visualizing the phase portrait of $x' = Ax$. Click anywhere on the canvas to add custom trajectory curves.
+        </div>
+        
+        <div class="select-group">
+            <span class="select-label">System Type Matrix A</span>
+            <select id="matrix-select" onchange="changeMatrix()">
+                <option value="stable_spiral">Stable Spiral: Re(λ) < 0</option>
+                <option value="stable_node">Stable Node: Re(λ) < 0</option>
+                <option value="saddle">Saddle (Unstable): λ₁ > 0, λ₂ < 0</option>
+                <option value="center">Center (Neutral): Re(λ) = 0</option>
+            </select>
+        </div>
+
+        <div class="stat-line"><span>System:</span><span class="stat-val">x' = A x</span></div>
+        <div class="stat-line">
+            <span>Eigenvalues (λ):</span>
+            <span id="eigenvalues-val" class="stat-val">-0.20 ± 1.41i</span>
+        </div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Asymptotic Stability:</span>
+            <span id="stability-status" class="stat-val" style="color: #40c057;">Stable (Re(λ) < 0)</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const matrices = {
+            stable_spiral: {
+                a: -0.2, b: -1.0,
+                c: 1.0, d: -0.2,
+                eigenvalues: "-0.20 ± 1.00i",
+                stable: true,
+                color: "#40c057"
+            },
+            stable_node: {
+                a: -1.5, b: 0,
+                c: 0, d: -0.5,
+                eigenvalues: "-1.50, -0.50",
+                stable: true,
+                color: "#40c057"
+            },
+            saddle: {
+                a: 1.0, b: 0,
+                c: 0, d: -1.0,
+                eigenvalues: "1.00, -1.00",
+                stable: false,
+                color: "#fa5252"
+            },
+            center: {
+                a: 0, b: -1.5,
+                c: 1.5, d: 0,
+                eigenvalues: "0.00 ± 1.50i",
+                stable: false,
+                neutral: true,
+                color: "#fd7e14"
+            }
+        };
+
+        let currentMatKey = 'stable_spiral';
+        let customTrajectories = [];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            // reset custom trajectories
+            customTrajectories = [];
+            initDefaultTrajectories();
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function changeMatrix() {
+            currentMatKey = document.getElementById('matrix-select').value;
+            customTrajectories = [];
+            initDefaultTrajectories();
+            updateUI();
+            draw();
+        }
+
+        function updateUI() {
+            const m = matrices[currentMatKey];
+            document.getElementById('eigenvalues-val').textContent = m.eigenvalues;
+            const stabEl = document.getElementById('stability-status');
+            if (m.stable) {
+                stabEl.textContent = "Stable (Re(λ) < 0)";
+                stabEl.style.color = "#40c057";
+            } else if (m.neutral) {
+                stabEl.textContent = "Neutral (Re(λ) = 0)";
+                stabEl.style.color = "#fd7e14";
+            } else {
+                stabEl.textContent = "Unstable (Re(λ) > 0)";
+                stabEl.style.color = "#fa5252";
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const clearSpace = rect.width > 600 ? 300 : 0;
+            const cx = clearSpace + (rect.width - clearSpace) / 2;
+            const cy = rect.height / 2;
+            const scale = Math.min(rect.width - clearSpace, rect.height) * 0.15;
+
+            // Map back to math coordinates
+            const x0 = (clickX - cx) / scale;
+            const y0 = -(clickY - cy) / scale;
+
+            if (clickX > clearSpace) {
+                customTrajectories.push(integrateTrajectory(x0, y0));
+                draw();
+            }
+        });
+
+        function integrateTrajectory(x0, y0) {
+            const m = matrices[currentMatKey];
+            const dt = 0.02;
+            const steps = currentMatKey === 'center' ? 300 : 200;
+            const points = [{ x: x0, y: y0 }];
+            
+            let x = x0;
+            let y = y0;
+
+            for (let i = 0; i < steps; i++) {
+                // RK4 integration
+                const dxdt = (tx, ty) => m.a * tx + m.b * ty;
+                const dydt = (tx, ty) => m.c * tx + m.d * ty;
+
+                const k1x = dxdt(x, y);
+                const k1y = dydt(x, y);
+
+                const k2x = dxdt(x + 0.5 * dt * k1x, y + 0.5 * dt * k1y);
+                const k2y = dydt(x + 0.5 * dt * k1x, y + 0.5 * dt * k1y);
+
+                const k3x = dxdt(x + 0.5 * dt * k2x, y + 0.5 * dt * k2y);
+                const k3y = dydt(x + 0.5 * dt * k2x, y + 0.5 * dt * k2y);
+
+                const k4x = dxdt(x + dt * k3x, y + dt * k3y);
+                const k4y = dydt(x + dt * k3x, y + dt * k3y);
+
+                x += (dt / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+                y += (dt / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+
+                // Stop if we diverge too far
+                if (Math.abs(x) > 10 || Math.abs(y) > 10) break;
+                // Stop if we are too close to origin (stable case)
+                if (Math.abs(x) < 0.01 && Math.abs(y) < 0.01 && m.stable) break;
+
+                points.push({ x, y });
+            }
+            return points;
+        }
+
+        function initDefaultTrajectories() {
+            // Seed a ring of trajectories
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * 2 * Math.PI) / 8;
+                const r = 2.0;
+                customTrajectories.push(integrateTrajectory(r * Math.cos(angle), r * Math.sin(angle)));
+            }
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const trajectoryColor = styles.getPropertyValue('--trajectory-color').trim();
+            const vectorColor = styles.getPropertyValue('--vector-color').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const cx = clearSpace + (w - clearSpace) / 2;
+            const cy = h / 2;
+            const scale = Math.min(w - clearSpace, h) * 0.15;
+
+            const toScreenX = (x) => cx + x * scale;
+            const toScreenY = (y) => cy - y * scale;
+
+            // Draw grid axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "44";
+            ctx.lineWidth = 1;
+            ctx.moveTo(clearSpace, cy);
+            ctx.lineTo(w, cy);
+            ctx.moveTo(cx, 0);
+            ctx.lineTo(cx, h);
+            ctx.stroke();
+
+            // Draw vector fields grid (mini arrows for flows)
+            const m = matrices[currentMatKey];
+            ctx.strokeStyle = vectorColor + "44";
+            ctx.fillStyle = vectorColor + "44";
+            ctx.lineWidth = 1;
+
+            const gridSteps = 15;
+            const boundX = (w - clearSpace) / scale / 2;
+            const boundY = h / scale / 2;
+
+            for (let i = -gridSteps; i <= gridSteps; i++) {
+                for (let j = -gridSteps; j <= gridSteps; j++) {
+                    const gx = (i / gridSteps) * boundX * 1.8;
+                    const gy = (j / gridSteps) * boundY * 1.8;
+
+                    // velocity vector
+                    const vx = m.a * gx + m.b * gy;
+                    const vy = m.c * gx + m.d * gy;
+                    const len = Math.sqrt(vx*vx + vy*vy);
+                    if (len < 0.05) continue;
+
+                    const sx = toScreenX(gx);
+                    const sy = toScreenY(gy);
+
+                    // scale arrows to fit nicely
+                    const arrowScale = 0.15;
+                    const ex = sx + (vx / len) * 15;
+                    const ey = sy - (vy / len) * 15;
+
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(ex, ey);
+                    ctx.stroke();
+
+                    // Arrowhead
+                    const angle = Math.atan2(vy, vx);
+                    ctx.beginPath();
+                    ctx.arc(ex, ey, 2, 0, 2*Math.PI);
+                    ctx.fill();
+                }
+            }
+
+            // Draw trajectories
+            customTrajectories.forEach(traj => {
+                ctx.beginPath();
+                ctx.strokeStyle = m.stable ? "#40c05799" : (m.neutral ? "#fd7e1499" : "#fa525299");
+                ctx.lineWidth = 2;
+                traj.forEach((pt, idx) => {
+                    if (idx === 0) ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
+                    else ctx.lineTo(toScreenX(pt.x), toScreenY(pt.y));
+                });
+                ctx.stroke();
+            });
+
+            // Draw origin node
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, 2*Math.PI);
+            ctx.fillStyle = textColor;
+            ctx.fill();
+        }
+
+        // Initialize UI and draw
+        changeMatrix();
+    </script>
+</body>
+</html>

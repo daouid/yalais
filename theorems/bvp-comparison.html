@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparison Principle for Boundary Value Problems - Yalais</title>
+    <meta name="description" content="Formal Lean 4 proof and interactive concept animation of the Comparison Principle for Boundary Value Problems.">
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="brand">
+                <span>yalais<span class="brand-accent">.</span></span>
+            </a>
+            <div class="nav-controls">
+                <a href="../index.html" class="nav-link" style="font-weight: 500; font-size: 14px; margin-right: 8px;">Back to Catalog</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <header class="detail-header">
+            <h1 class="detail-title">Comparison Principle for Boundary Value Problems</h1>
+            <div class="detail-meta">
+                <span class="badge-tag analysis">Analysis</span>
+                <span class="badge-tag red">Ordinary Differential Equations</span>
+                <span>File: <code class="code-ref">data/lean-eval/archive_submissions/bvp_comparison/Submission.lean</code></span>
+            </div>
+        </header>
+
+        <!-- Visual Row -->
+        <div class="visual-row">
+            <!-- Concept Animation Card -->
+            <div class="animation-card">
+                <div class="animation-header">
+                    <span class="animation-title">Concept Animation</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="expand-btn" onclick="toggleExpandAnimation()">&#x26F6; Expand</button>
+                        <span class="animation-badge">Interactive 2D</span>
+                    </div>
+                </div>
+                <div class="animation-wrapper">
+                    <iframe src="../animations/bvp-comparison.html" class="animation-iframe" title="Comparison Principle for Boundary Value Problems Interactive Animation"></iframe>
+                </div>
+            </div>
+
+            <!-- Illustration Card -->
+            <div class="illustration-card">
+                <div class="illustration-header">Geometric Concept Illustration</div>
+                <div class="illustration-img-wrapper">
+                    <img src="../assets/images/bvp_comparison_illustration.png" class="illustration-img" alt="Comparison Principle for Boundary Value Problems Geometric Concept Illustration" title="Click to zoom">
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Row -->
+        <div class="content-row">
+            <!-- Mathematical Exposition -->
+            <section class="exposition-panel">
+                <h2>Mathematical Exposition</h2>
+                <p>In the study of <span class="text-topology">differential equations</span>, a <strong>comparison principle</strong> is a theorem stating that an inequality between the derivatives of two functions, combined with inequalities on boundary conditions, implies a pointwise ordering between the functions themselves. For second-order elliptic equations, this is intimately linked to the maximum principle.</p>
+                
+                <p>Specifically, let $u, v: [0, 1] \to \mathbb{R}$ be twice-differentiable functions. The comparison theorem states that if:</p>
+                $$-u''(x) \le -v''(x) \quad \text{for all } x \in (0, 1)$$
+                <p>and the boundary conditions satisfy:</p>
+                $$u(0) \le v(0) \quad \text{and} \quad u(1) \le v(1)$$
+                <p>then we have the pointwise ordering:</p>
+                $$u(x) \le v(x) \quad \text{for all } x \in [0, 1]$$
+
+                <h3>Convexity and the Maximum Principle</h3>
+                <p>To prove this result, we define the difference function $w(x) = u(x) - v(x)$. Taking the second derivative of $w(x)$ gives:</p>
+                $$w''(x) = u''(x) - v''(x)$$
+                <p>Since $-u''(x) \le -v''(x)$, we have $u''(x) \ge v''(x)$, which implies:</p>
+                $$w''(x) \ge 0 \quad \text{for all } x \in (0, 1)$$
+                <p>A twice-differentiable function with a non-negative second derivative on an interval is <strong>convex</strong>. Since $w$ is convex on $[0, 1]$, any value of $w(x)$ for $x \in [0, 1]$ lies below the secant line connecting the boundary points $(0, w(0))$ and $(1, w(1))$:</p>
+                $$w(x) \le (1 - x) w(0) + x w(1)$$
+                <p>Since $u(0) \le v(0)$ and $u(1) \le v(1)$, the boundary differences satisfy $w(0) \le 0$ and $w(1) \le 0$. Thus:</p>
+                $$w(x) \le (1 - x) \cdot 0 + x \cdot 0 = 0 \implies u(x) - v(x) \le 0 \implies u(x) \le v(x)$$
+                <p>This completes the proof.</p>
+
+                <h3>Lean 4 Formalization</h3>
+                <p>The Lean 4 formalization utilizes Mathlib's real analysis and convexity libraries.
+                The key steps verified in the proof are:</p>
+                <ol>
+                    <li>Showing the difference function $w = u - v$ is twice differentiable on the open domain $J$ containing $[0, 1]$.</li>
+                    <li>Invoking `convexOn_of_deriv2_nonneg` to establish that $w$ is a convex function on the closed interval $[0, 1]$ by showing its second derivative is non-negative on the interior.</li>
+                    <li>Using the definition of a convex function to bound $w(x)$ by the linear combination of its endpoint values.</li>
+                    <li>Establishing the final inequality by arithmetic bounds since the coefficients $(1-x)$ and $x$ are non-negative for $x \in [0, 1]$.</li>
+                </ol>
+            </section>
+
+            <!-- Lean 4 Code block -->
+            <section class="code-panel">
+                <div class="code-header">
+                    <span class="code-title">bvp_comparison.lean</span>
+                    <button class="copy-btn" data-target="lean-code">Copy Code</button>
+                </div>
+                <pre class="code-content"><code id="lean-code" class="language-lean">import Mathlib
+
+namespace Submission
+
+theorem bvp_comparison (J : Set ℝ) (hJ_open : IsOpen J) (hJ_sub : Set.Icc (0 : ℝ) 1 ⊆ J)
+    (u v : ℝ → ℝ)
+    (hu : ∀ x ∈ J, HasDerivAt u (deriv u x) x)
+    (hu' : ∀ x ∈ J, HasDerivAt (deriv u) (deriv (deriv u) x) x)
+    (hv : ∀ x ∈ J, HasDerivAt v (deriv v x) x)
+    (hv' : ∀ x ∈ J, HasDerivAt (deriv v) (deriv (deriv v) x) x)
+    (hineq : ∀ x ∈ Set.Ioo (0 : ℝ) 1, -deriv (deriv u) x ≤ -deriv (deriv v) x)
+    (hu0 : u 0 ≤ v 0) (hu1 : u 1 ≤ v 1) :
+    ∀ x ∈ Set.Icc (0 : ℝ) 1, u x ≤ v x := by
+  let w := fun x => u x - v x
+  have hw_deriv : ∀ x ∈ J, HasDerivAt w (deriv u x - deriv v x) x := fun x hx =>
+    (hu x hx).sub (hv x hx)
+  have hw_deriv' : ∀ x ∈ J, HasDerivAt (deriv w) (deriv (deriv u) x - deriv (deriv v) x) x := by
+    intro x hx
+    have : ∀ y ∈ J, deriv w y = deriv u y - deriv v y := fun y hy => (hw_deriv y hy).deriv
+    apply HasDerivAt.congr_of_eventuallyEq ((hu' x hx).sub (hv' x hx))
+    filter_upwards [hJ_open.mem_nhds hx]
+    intro y hy
+    exact (hw_deriv y hy).deriv
+  
+  have h_convex : ConvexOn ℝ (Set.Icc 0 1) w :=
+    convexOn_of_deriv2_nonneg (convex_Icc 0 1)
+      (DifferentiableOn.continuousOn fun x hx => (hw_deriv x (hJ_sub hx)).differentiableAt.differentiableWithinAt)
+      (fun x hx => by
+        rw [interior_Icc] at hx
+        exact (hw_deriv x (hJ_sub (Set.Ioo_subset_Icc_self hx))).differentiableAt.differentiableWithinAt)
+      (fun x hx => by
+        rw [interior_Icc] at hx
+        exact (hw_deriv' x (hJ_sub (Set.Ioo_subset_Icc_self hx))).differentiableAt.differentiableWithinAt)
+      (fun x hx => by
+        rw [interior_Icc] at hx
+        have hxJ := hJ_sub (Set.Ioo_subset_Icc_self hx)
+        have : deriv (deriv w) x = deriv (deriv u) x - deriv (deriv v) x := (hw_deriv' x hxJ).deriv
+        change 0 ≤ deriv (deriv w) x
+        rw [this]
+        exact sub_nonneg.2 (neg_le_neg_iff.1 (hineq x hx)))
+
+  intro x hx
+  have h_le := h_convex.2 (Set.left_mem_Icc.2 zero_le_one) (Set.right_mem_Icc.2 zero_le_one)
+    (sub_nonneg.2 hx.2) hx.1 (by ring)
+  have h_smul0 : (1 - x) • (0 : ℝ) + x • (1 : ℝ) = x := by simp [smul_eq_mul]
+  rw [h_smul0] at h_le
+  have hw0 : w 0 ≤ 0 := sub_nonpos.2 hu0
+  have hw1 : w 1 ≤ 0 := sub_nonpos.2 hu1
+  have : (1 - x) • w 0 + x • w 1 ≤ 0 := by
+    simp [smul_eq_mul]
+    nlinarith [hx.1, hx.2, hw0, hw1]
+  exact sub_nonpos.1 (h_le.trans this)
+
+end Submission</code></pre>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 yalais &bull; Formally verified using Lean 4 & Mathlib</p>
+        </div>
+    </footer>
+
+    <!-- Global Javascript -->
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cayley Graph Connectedness Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --node-active: #4c6ef5;
+            --node-border: #ced4da;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #1b1d26;
+            --node-active: #5c7cfa;
+            --node-border: #343a40;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 300px;
+            width: calc(35% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .gen-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .gen-btn {
+            background: var(--node-default);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .gen-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Cayley Graph Explorer</div>
+        <div class="panel-desc">
+            Visualizing the Cayley graph of the cyclic group $\mathbb{Z}_{12}$ under addition. Toggle elements to define the generating set $S$.
+        </div>
+        
+        <div style="font-size: 10px; font-weight: 600; margin-bottom: 6px;">Generating Set S:</div>
+        <div class="gen-checkboxes">
+            <button class="gen-btn" onclick="toggleGenerator(1)">1</button>
+            <button class="gen-btn" onclick="toggleGenerator(2)">2</button>
+            <button class="gen-btn" onclick="toggleGenerator(3)">3</button>
+            <button class="gen-btn" onclick="toggleGenerator(4)">4</button>
+            <button class="gen-btn" onclick="toggleGenerator(6)">6</button>
+        </div>
+
+        <div class="stat-line"><span>Group G:</span><span class="stat-val">&mathbb;Z₁₂</span></div>
+        <div class="stat-line">
+            <span>Subgroup &langle;S&rangle;:</span>
+            <span id="subgroup-val" class="stat-val" style="color: var(--accent);">&langle;3&rangle; = {0, 3, 6, 9}</span>
+        </div>
+        <div class="stat-line">
+            <span>Connected Components:</span>
+            <span id="components-val" class="stat-val">3</span>
+        </div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Graph Connected:</span>
+            <span id="conn-status" class="stat-val" style="color: #fa5252;">False (&langle;S&rangle; &ne; G)</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const N = 12; // Z_12
+        let S = new Set([3]); // default generator is {3}
+
+        // Color palette for connected components
+        const componentColors = [
+            '#4c6ef5', // Indigo
+            '#fab005', // Yellow
+            '#12b886', // Teal
+            '#fa5252', // Red
+            '#be4bdb', // Grape
+            '#fd7e14'  // Orange
+        ];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function toggleGenerator(val) {
+            if (S.has(val)) {
+                if (S.size > 1) S.delete(val);
+            } else {
+                S.add(val);
+            }
+            updateUI();
+            draw();
+        }
+
+        function updateUI() {
+            // Update button styles
+            document.querySelectorAll('.gen-btn').forEach(btn => {
+                const val = parseInt(btn.textContent);
+                if (S.has(val)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Calculate generated subgroup
+            const subgroup = new Set([0]);
+            let queue = [0];
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                S.forEach(g => {
+                    const next = (curr + g) % N;
+                    if (!subgroup.has(next)) {
+                        subgroup.add(next);
+                        queue.push(next);
+                    }
+                });
+            }
+
+            // Subgroup text representation
+            const sortedSubgroup = Array.from(subgroup).sort((a,b) => a-b);
+            const sList = Array.from(S).sort((a,b) => a-b).join(', ');
+            document.getElementById('subgroup-val').textContent = `⟨${sList}⟩ = {${sortedSubgroup.join(', ')}}`;
+
+            // Calculate connected components
+            const visited = new Array(N).fill(false);
+            const components = [];
+            for (let i = 0; i < N; i++) {
+                if (!visited[i]) {
+                    const comp = [];
+                    const q = [i];
+                    visited[i] = true;
+                    while (q.length > 0) {
+                        const curr = q.shift();
+                        comp.push(curr);
+                        S.forEach(g => {
+                            const next1 = (curr + g) % N;
+                            const next2 = (curr - g + N) % N;
+                            [next1, next2].forEach(next => {
+                                if (!visited[next]) {
+                                    visited[next] = true;
+                                    q.push(next);
+                                }
+                            });
+                        });
+                    }
+                    components.push(comp);
+                }
+            }
+
+            document.getElementById('components-val').textContent = components.length;
+
+            const connStatusEl = document.getElementById('conn-status');
+            if (components.length === 1) {
+                connStatusEl.textContent = "True (⟨S⟩ = G)";
+                connStatusEl.style.color = '#40c057';
+            } else {
+                connStatusEl.textContent = `False (⟨S⟩ ≠ G)`;
+                connStatusEl.style.color = '#fa5252';
+            }
+
+            window.componentsList = components; // share with draw()
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            const nodeBorder = styles.getPropertyValue('--node-border').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const cx = clearSpace + (w - clearSpace) / 2;
+            const cy = h / 2;
+            const radius = Math.min(w - clearSpace, h) * 0.35;
+
+            // Vertex coordinates
+            const vertices = [];
+            for (let i = 0; i < N; i++) {
+                const angle = (i * 2 * Math.PI) / N - Math.PI / 2;
+                vertices.push({
+                    x: cx + radius * Math.cos(angle),
+                    y: cy + radius * Math.sin(angle),
+                    val: i
+                });
+            }
+
+            // Find component of each vertex
+            const getComponentIndex = (val) => {
+                if (!window.componentsList) return 0;
+                return window.componentsList.findIndex(comp => comp.includes(val));
+            };
+
+            // 1. Draw Edges
+            ctx.lineWidth = 2;
+            vertices.forEach(v => {
+                S.forEach(g => {
+                    const targetIdx = (v.val + g) % N;
+                    const target = vertices[targetIdx];
+
+                    // Determine edge color: same color as component if vertices belong to the same component
+                    const cIdx = getComponentIndex(v.val);
+                    ctx.strokeStyle = componentColors[cIdx % componentColors.length] + "99";
+
+                    ctx.beginPath();
+                    ctx.moveTo(v.x, v.y);
+                    // Draw slightly curved edges to distinguish multiple generators
+                    if (S.size > 1) {
+                        const midX = (v.x + target.x) / 2;
+                        const midY = (v.y + target.y) / 2;
+                        const dx = target.x - v.x;
+                        const dy = target.y - v.y;
+                        const len = Math.sqrt(dx*dx + dy*dy);
+                        const offset = 15 * (g % 3 - 1);
+                        const nx = -dy / len * offset;
+                        const ny = dx / len * offset;
+                        ctx.quadraticCurveTo(midX + nx, midY + ny, target.x, target.y);
+                    } else {
+                        ctx.lineTo(target.x, target.y);
+                    }
+                    ctx.stroke();
+                });
+            });
+
+            // 2. Draw Vertices
+            vertices.forEach(v => {
+                const cIdx = getComponentIndex(v.val);
+                const col = componentColors[cIdx % componentColors.length];
+
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, 16, 0, 2 * Math.PI);
+                ctx.fillStyle = nodeDefault;
+                ctx.fill();
+                ctx.strokeStyle = col;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Value inside node
+                ctx.fillStyle = textColor;
+                ctx.font = "bold 12px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(v.val.toString(), v.x, v.y);
+            });
+        }
+
+        // Initialize UI and draw
+        updateUI();
+        resize();
+    </script>
+</body>
+</html>

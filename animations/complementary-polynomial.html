@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complementary Polynomial on Unit Circle</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-p: #228be6; /* Blue for P */
+            --color-q: #fa5252; /* Red for Q */
+            --color-sum: #40c057; /* Green for sum */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-p: #339af0;
+            --color-q: #ff6b6b;
+            --color-sum: #51cf66;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .select-group {
+            margin-bottom: 12px;
+        }
+        .select-label {
+            font-size: 10px;
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 600;
+        }
+        select {
+            width: 100%;
+            padding: 6px;
+            background: var(--node-default);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .slider-group {
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        button {
+            flex: 1;
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Fejér-Riesz Explorer</div>
+        <div class="panel-desc">
+            Visualizing the complementary relationship: for any polynomial $P(z)$ bounded by $1$ on $S^1$, there exists $Q(z)$ such that $|P(z)|^2 + |Q(z)|^2 = 1$.
+        </div>
+        
+        <div class="select-group">
+            <span class="select-label">Choose Polynomial P(z)</span>
+            <select id="poly-select" onchange="changePolynomial()">
+                <option value="linear_shift">P(z) = (z + 1) / 2</option>
+                <option value="general_linear">P(z) = 0.6z + 0.2</option>
+                <option value="const">P(z) = 0.6 (Constant)</option>
+                <option value="monomial">P(z) = 0.6z²</option>
+            </select>
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Angle θ (z = e^(iθ))</span>
+                <span id="angle-val">0°</span>
+            </div>
+            <input type="range" id="angle-slider" min="0" max="360" step="1" value="0" oninput="updateAngle()">
+        </div>
+
+        <div class="stat-line"><span>z:</span><span id="z-val" class="stat-val">1.00 + 0.00i</span></div>
+        <div class="stat-line"><span>P(z):</span><span id="p-val" class="stat-val" style="color: var(--color-p);">0.00 + 0.00i</span></div>
+        <div class="stat-line"><span>Q(z):</span><span id="q-val" class="stat-val" style="color: var(--color-q);">0.00 + 0.00i</span></div>
+
+        <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+            <div class="slider-label">
+                <span>Magnitude Squares: |P|² + |Q|²</span>
+                <span id="sum-val" style="font-weight: bold; color: var(--color-sum);">1.000</span>
+            </div>
+            <div style="height: 16px; width: 100%; background: var(--node-default); border-radius: 8px; overflow: hidden; display: flex; border: 1px solid var(--border-color); margin-top: 4px;">
+                <div id="p-bar" style="width: 50%; background: var(--color-p); transition: width 0.05s;"></div>
+                <div id="q-bar" style="width: 50%; background: var(--color-q); transition: width 0.05s;"></div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="play-btn" onclick="togglePlay()">Pause</button>
+            <button onclick="resetAngle()" style="background: var(--node-default); color: var(--text-color); border: 1px solid var(--border-color);">Reset</button>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const polynomials = {
+            const: {
+                evalP: (z) => ({ re: 0.6, im: 0 }),
+                evalQ: (z) => ({ re: 0.8, im: 0 }),
+                labelP: "0.6",
+                labelQ: "0.8"
+            },
+            linear_shift: {
+                evalP: (z) => ({ re: 0.5 * z.re + 0.5, im: 0.5 * z.im }),
+                evalQ: (z) => ({ re: 0.5 * z.re - 0.5, im: 0.5 * z.im }),
+                labelP: "0.5z + 0.5",
+                labelQ: "0.5z - 0.5"
+            },
+            monomial: {
+                evalP: (z) => {
+                    const re2 = z.re * z.re - z.im * z.im;
+                    const im2 = 2 * z.re * z.im;
+                    return { re: 0.6 * re2, im: 0.6 * im2 };
+                },
+                evalQ: (z) => ({ re: 0.8, im: 0 }),
+                labelP: "0.6z²",
+                labelQ: "0.8"
+            },
+            general_linear: {
+                evalP: (z) => ({ re: 0.6 * z.re + 0.2, im: 0.6 * z.im }),
+                evalQ: (z) => {
+                    const c = 0.758257569;
+                    const d = -0.158257569;
+                    return { re: c * z.re + d, im: c * z.im };
+                },
+                labelP: "0.6z + 0.2",
+                labelQ: "0.758z - 0.158"
+            }
+        };
+
+        let currentKey = 'linear_shift';
+        let theta = 0; // in degrees
+        let isPlaying = true;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function changePolynomial() {
+            currentKey = document.getElementById('poly-select').value;
+            draw();
+        }
+
+        function updateAngle() {
+            theta = parseInt(document.getElementById('angle-slider').value);
+            document.getElementById('angle-val').textContent = `${theta}°`;
+            draw();
+        }
+
+        function resetAngle() {
+            theta = 0;
+            document.getElementById('angle-slider').value = 0;
+            document.getElementById('angle-val').textContent = '0°';
+            draw();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-btn').textContent = isPlaying ? 'Pause' : 'Play';
+        }
+
+        function tick() {
+            if (isPlaying) {
+                theta = (theta + 0.5) % 360;
+                document.getElementById('angle-slider').value = Math.round(theta);
+                document.getElementById('angle-val').textContent = `${Math.round(theta)}°`;
+                draw();
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorP = styles.getPropertyValue('--color-p').trim();
+            const colorQ = styles.getPropertyValue('--color-q').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const originX = clearSpace + (w - clearSpace) / 2;
+            const originY = h / 2;
+            const axisLength = Math.min(w - clearSpace - 80, h - 80) / 2;
+
+            // 1. Draw Grid Lines
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "44";
+            ctx.lineWidth = 1;
+            // Draw concentric grid circles
+            const radii = [0.25, 0.5, 0.75, 1.0];
+            radii.forEach(r => {
+                ctx.beginPath();
+                ctx.arc(originX, originY, r * axisLength, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // Draw radial lines
+            for (let angle = 0; angle < 360; angle += 30) {
+                const rad = angle * Math.PI / 180;
+                ctx.beginPath();
+                ctx.moveTo(originX, originY);
+                ctx.lineTo(originX + Math.cos(rad) * axisLength, originY - Math.sin(rad) * axisLength);
+                ctx.stroke();
+            }
+
+            // Draw main axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(originX - axisLength - 20, originY);
+            ctx.lineTo(originX + axisLength + 20, originY);
+            ctx.moveTo(originX, originY - axisLength - 20);
+            ctx.lineTo(originX, originY + axisLength + 20);
+            ctx.stroke();
+
+            // Label axes
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Re", originX + axisLength + 30, originY + 4);
+            ctx.fillText("Im", originX, originY - axisLength - 25);
+
+            // 2. Draw Unit Circle
+            ctx.beginPath();
+            ctx.arc(originX, originY, axisLength, 0, Math.PI * 2);
+            ctx.strokeStyle = textColor + "22";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // 3. Current z on S^1
+            const radTheta = theta * Math.PI / 180;
+            const z = { re: Math.cos(radTheta), im: Math.sin(radTheta) };
+            
+            // 4. Evaluate P(z) and Q(z)
+            const poly = polynomials[currentKey];
+            const pVal = poly.evalP(z);
+            const qVal = poly.evalQ(z);
+
+            // Compute magnitudes
+            const magP2 = pVal.re * pVal.re + pVal.im * pVal.im;
+            const magQ2 = qVal.re * qVal.re + qVal.im * qVal.im;
+            const magP = Math.sqrt(magP2);
+            const magQ = Math.sqrt(magQ2);
+            const sumOfSquares = magP2 + magQ2;
+
+            // Update UI elements
+            document.getElementById('z-val').textContent = `${z.re.toFixed(2)} + ${z.im.toFixed(2)}i`;
+            document.getElementById('p-val').textContent = `${pVal.re.toFixed(2)} + ${pVal.im.toFixed(2)}i`;
+            document.getElementById('q-val').textContent = `${qVal.re.toFixed(2)} + ${qVal.im.toFixed(2)}i`;
+            document.getElementById('sum-val').textContent = sumOfSquares.toFixed(3);
+            
+            // Update squares bar
+            const pPct = (magP2 / sumOfSquares) * 100;
+            const qPct = (magQ2 / sumOfSquares) * 100;
+            document.getElementById('p-bar').style.width = `${pPct}%`;
+            document.getElementById('q-bar').style.width = `${qPct}%`;
+
+            // 5. Draw entire curves for P(S^1) and Q(S^1)
+            ctx.lineWidth = 2;
+            
+            // Draw P curve
+            ctx.beginPath();
+            ctx.strokeStyle = colorP + "99";
+            for (let a = 0; a <= 360; a += 2) {
+                const r = a * Math.PI / 180;
+                const p = poly.evalP({ re: Math.cos(r), im: Math.sin(r) });
+                const x = originX + p.re * axisLength;
+                const y = originY - p.im * axisLength;
+                if (a === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // Draw Q curve
+            ctx.beginPath();
+            ctx.strokeStyle = colorQ + "99";
+            for (let a = 0; a <= 360; a += 2) {
+                const r = a * Math.PI / 180;
+                const q = poly.evalQ({ re: Math.cos(r), im: Math.sin(r) });
+                const x = originX + q.re * axisLength;
+                const y = originY - q.im * axisLength;
+                if (a === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // 6. Draw current values & vectors
+            // Radial vector to z
+            ctx.beginPath();
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX + z.re * axisLength, originY - z.im * axisLength);
+            ctx.strokeStyle = textColor + "44";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Dot for z
+            ctx.beginPath();
+            ctx.arc(originX + z.re * axisLength, originY - z.im * axisLength, 5, 0, Math.PI * 2);
+            ctx.fillStyle = textColor;
+            ctx.fill();
+
+            // Vector and dot for P(z)
+            ctx.beginPath();
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX + pVal.re * axisLength, originY - pVal.im * axisLength);
+            ctx.strokeStyle = colorP;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(originX + pVal.re * axisLength, originY - pVal.im * axisLength, 6, 0, Math.PI * 2);
+            ctx.fillStyle = colorP;
+            ctx.fill();
+
+            // Vector and dot for Q(z)
+            ctx.beginPath();
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX + qVal.re * axisLength, originY - qVal.im * axisLength);
+            ctx.strokeStyle = colorQ;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(originX + qVal.re * axisLength, originY - qVal.im * axisLength, 6, 0, Math.PI * 2);
+            ctx.fillStyle = colorQ;
+            ctx.fill();
+
+            // Labels
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillStyle = textColor;
+            ctx.fillText("z", originX + z.re * axisLength + 8, originY - z.im * axisLength + 4);
+
+            ctx.fillStyle = colorP;
+            ctx.fillText("P(z)", originX + pVal.re * axisLength + 8, originY - pVal.im * axisLength - 6);
+
+            ctx.fillStyle = colorQ;
+            ctx.fillText("Q(z)", originX + qVal.re * axisLength + 8, originY - qVal.im * axisLength + 12);
+        }
+
+        // Init
+        resize();
+        tick();
+    </script>
+</body>
+</html>

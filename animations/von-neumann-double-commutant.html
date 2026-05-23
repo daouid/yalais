@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>von Neumann Double Commutant Theorem Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --subalgebra-color: #ffd43b;
+            --closure-color: #fa5252;
+            --vector-color: #12b886;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --subalgebra-color: #fcc419;
+            --closure-color: #ff6b6b;
+            --vector-color: #20c997;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 320px;
+            width: calc(35% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 10px;
+            padding: 6px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent);
+        }
+        [data-theme="dark"] .instructions {
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Double Commutant Explorer</div>
+        <div class="panel-desc">
+            Visualizing the von Neumann Double Commutant Theorem: For a star-subalgebra $S$, its double commutant $S''$ is exactly its closure in the Strong Operator Topology (SOT) and Weak Operator Topology (WOT).
+        </div>
+        
+        <div class="stat-line"><span>Operator $T$ status:</span><span id="t-status" class="stat-val" style="color: #40c057;">Inside S (Subalgebra)</span></div>
+        <div class="stat-line"><span>Belongs to WOT/SOT closure ($S''$):</span><span id="t-double-comm" class="stat-val">True</span></div>
+        <div class="stat-line"><span>Belongs to Norm closure ($\bar{S}$):</span><span id="t-norm-closed" class="stat-val">True</span></div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Approximation Error on vector $x$:</span>
+            <span id="approx-err" class="stat-val">0.00</span>
+        </div>
+
+        <div class="instructions">
+            Drag the <strong>target operator T</strong> (blue dot) in the operator space. Drag the <strong>vector x</strong> (green arrow) in the Hilbert space. Observe how for any $T \in S''$ we can find $A \in S$ (yellow dot) that approximates $T$ on $x$ ($A x \approx T x$).
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Operator space representations (positions on canvas)
+        let op_S_center = { x: 200, y: 250 };
+        let T = { x: 200, y: 250 }; // Dragged operator
+        let A = { x: 200, y: 250 }; // Approximating operator in S
+        
+        // Hilbert space representation
+        let hilbert_center = { x: 500, y: 250 };
+        let vec_x = { x: 80, y: -40 }; // relative to hilbert_center
+        
+        let dragging = null; // 'T' or 'x'
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.height = rect.height * dpr;
+            canvas.width = rect.width * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Adjust centers based on width
+            const clearSpace = rect.width > 600 ? 340 : 0;
+            const remWidth = rect.width - clearSpace;
+            op_S_center.x = clearSpace + remWidth * 0.3;
+            hilbert_center.x = clearSpace + remWidth * 0.75;
+            
+            op_S_center.y = rect.height / 2;
+            hilbert_center.y = rect.height / 2;
+            
+            // Reset T to center if initialized
+            if (T.x === 200 && T.y === 250) {
+                T.x = op_S_center.x;
+                T.y = op_S_center.y;
+            }
+            
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function drawVector(from, to, color, label) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+
+            // Arrow head
+            const angle = Math.atan2(to.y - from.y, to.x - from.x);
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.moveTo(to.x, to.y);
+            ctx.lineTo(to.x - 8 * Math.cos(angle - Math.PI/6), to.y - 8 * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(to.x - 8 * Math.cos(angle + Math.PI/6), to.y - 8 * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
+
+            // Label
+            if (label) {
+                ctx.fillStyle = color;
+                ctx.font = "italic 11px sans-serif";
+                ctx.fillText(label, to.x + 8 * Math.cos(angle), to.y + 8 * Math.sin(angle));
+            }
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const subalgebraColor = styles.getPropertyValue('--subalgebra-color').trim();
+            const closureColor = styles.getPropertyValue('--closure-color').trim();
+            const vectorColor = styles.getPropertyValue('--vector-color').trim();
+
+            // Radius parameters for closures in operator space
+            const r_S = 40;     // Subalgebra S itself
+            const r_norm = 75;  // Norm closure
+            const r_SOT = 110;  // SOT = WOT closure (S'')
+
+            // Compute distance of T from S center
+            const dx = T.x - op_S_center.x;
+            const dy = T.y - op_S_center.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+
+            let status = "";
+            let inDoubleComm = false;
+            let inNormClosed = false;
+
+            if (d <= r_S) {
+                status = "Inside S (Subalgebra)";
+                document.getElementById('t-status').style.color = "#40c057";
+                inDoubleComm = true;
+                inNormClosed = true;
+                // A matches T exactly
+                A.x = T.x;
+                A.y = T.y;
+            } else if (d <= r_norm) {
+                status = "In Norm Closure of S";
+                document.getElementById('t-status').style.color = "#ffd43b";
+                inDoubleComm = true;
+                inNormClosed = true;
+                // A is on boundary of S
+                const angle = Math.atan2(dy, dx);
+                A.x = op_S_center.x + r_S * Math.cos(angle);
+                A.y = op_S_center.y + r_S * Math.sin(angle);
+            } else if (d <= r_SOT) {
+                status = "In S'' (SOT/WOT Closure)";
+                document.getElementById('t-status').style.color = "#4c6ef5";
+                inDoubleComm = true;
+                inNormClosed = false;
+                // SOT approximation: as T goes further, A can only get so close
+                // In infinite dim, SOT approximation is perfect on finite vectors, but
+                // since this is a visual representation, we can show A trying its best to match T
+                const angle = Math.atan2(dy, dx);
+                A.x = op_S_center.x + r_S * Math.cos(angle);
+                A.y = op_S_center.y + r_S * Math.sin(angle);
+            } else {
+                status = "Outside S''";
+                document.getElementById('t-status').style.color = "#fa5252";
+                inDoubleComm = false;
+                inNormClosed = false;
+                // A is far from T
+                const angle = Math.atan2(dy, dx);
+                A.x = op_S_center.x + r_S * Math.cos(angle);
+                A.y = op_S_center.y + r_S * Math.sin(angle);
+            }
+
+            document.getElementById('t-status').textContent = status;
+            document.getElementById('t-double-comm').textContent = inDoubleComm ? "True" : "False";
+            document.getElementById('t-double-comm').style.color = inDoubleComm ? "#40c057" : "#fa5252";
+            document.getElementById('t-norm-closed').textContent = inNormClosed ? "True" : "False";
+            document.getElementById('t-norm-closed').style.color = inNormClosed ? "#40c057" : "#fa5252";
+
+            // Hilbert space mapping:
+            // Let's represent operators as matrices acting on vec_x
+            // T acts as a scaling and rotation
+            // A acts similarly but with a smaller range
+            const getOpMatrix = (op) => {
+                const theta = ((op.x - op_S_center.x) / 100) * Math.PI;
+                const scale = 1.0 + (op.y - op_S_center.y) / 150;
+                return {
+                    m00: scale * Math.cos(theta),
+                    m01: -scale * Math.sin(theta),
+                    m10: scale * Math.sin(theta),
+                    m11: scale * Math.cos(theta)
+                };
+            };
+
+            const mat_T = getOpMatrix(T);
+            const mat_A = getOpMatrix(A);
+
+            // Vector Tx
+            const Tx = {
+                x: mat_T.m00 * vec_x.x + mat_T.m01 * vec_x.y,
+                y: mat_T.m10 * vec_x.x + mat_T.m11 * vec_x.y
+            };
+
+            // Vector Ax
+            const Ax = {
+                x: mat_A.m00 * vec_x.x + mat_A.m01 * vec_x.y,
+                y: mat_A.m10 * vec_x.x + mat_A.m11 * vec_x.y
+            };
+
+            // Compute approximation error: ||Tx - Ax||
+            // If T is inside S'', we scale down the error because SOT closure means we can approximate it.
+            // If T is outside S'', the error remains large.
+            let err = 0;
+            if (inDoubleComm) {
+                // SOT closure means we can find A mapping x arbitrarily close to Tx
+                // Let's simulate this: Ax is forced to be extremely close to Tx
+                const interp = d <= r_S ? 1.0 : (d <= r_norm ? 0.98 : 0.95);
+                Ax.x = Tx.x * interp + Ax.x * (1 - interp);
+                Ax.y = Tx.y * interp + Ax.y * (1 - interp);
+            }
+            const err_x = Tx.x - Ax.x;
+            const err_y = Tx.y - Ax.y;
+            err = Math.sqrt(err_x*err_x + err_y*err_y) / 50;
+
+            document.getElementById('approx-err').textContent = err.toFixed(3);
+            document.getElementById('approx-err').style.color = err < 0.05 ? "#40c057" : (err < 0.2 ? "#ffd43b" : "#fa5252");
+
+            // LEFT PANEL: Operator Space B(H)
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 13px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Operator Space B(H)", op_S_center.x, op_S_center.y - r_SOT - 20);
+
+            // Draw closures circles
+            // SOT = WOT
+            ctx.beginPath();
+            ctx.arc(op_S_center.x, op_S_center.y, r_SOT, 0, Math.PI * 2);
+            ctx.strokeStyle = closureColor + "66";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = closureColor + "08";
+            ctx.fill();
+
+            // Norm closure
+            ctx.beginPath();
+            ctx.arc(op_S_center.x, op_S_center.y, r_norm, 0, Math.PI * 2);
+            ctx.strokeStyle = subalgebraColor + "66";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Subalgebra S
+            ctx.beginPath();
+            ctx.arc(op_S_center.x, op_S_center.y, r_S, 0, Math.PI * 2);
+            ctx.strokeStyle = subalgebraColor;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.fillStyle = subalgebraColor + "22";
+            ctx.fill();
+
+            // Labels for regions
+            ctx.font = "9px monospace";
+            ctx.fillStyle = subalgebraColor;
+            ctx.fillText("Subalgebra S", op_S_center.x, op_S_center.y - r_S + 12);
+            ctx.fillText("Norm closure", op_S_center.x, op_S_center.y - r_norm + 12);
+            ctx.fillStyle = closureColor;
+            ctx.fillText("S'' (SOT/WOT)", op_S_center.x, op_S_center.y - r_SOT + 12);
+
+            // Draw Operator A (Approximator in S)
+            ctx.beginPath();
+            ctx.arc(A.x, A.y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = subalgebraColor;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 1.5;
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillText("A", A.x, A.y - 10);
+
+            // Draw Operator T (Target)
+            ctx.beginPath();
+            ctx.arc(T.x, T.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = accent;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = textColor;
+            ctx.fillText("T", T.x, T.y - 12);
+
+
+            // RIGHT PANEL: Hilbert Space H
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 13px sans-serif";
+            ctx.fillText("Hilbert Space H", hilbert_center.x, hilbert_center.y - r_SOT - 20);
+
+            // Grid / axes for Hilbert Space
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 1;
+            ctx.moveTo(hilbert_center.x - 120, hilbert_center.y);
+            ctx.lineTo(hilbert_center.x + 120, hilbert_center.y);
+            ctx.moveTo(hilbert_center.x, hilbert_center.y - 120);
+            ctx.lineTo(hilbert_center.x, hilbert_center.y + 120);
+            ctx.stroke();
+
+            // Draw vectors
+            const target_x = { x: hilbert_center.x + vec_x.x, y: hilbert_center.y + vec_x.y };
+            const target_Tx = { x: hilbert_center.x + Tx.x, y: hilbert_center.y + Tx.y };
+            const target_Ax = { x: hilbert_center.x + Ax.x, y: hilbert_center.y + Ax.y };
+
+            // x (input)
+            drawVector(hilbert_center, target_x, vectorColor, "x");
+            // Tx (target output)
+            drawVector(hilbert_center, target_Tx, accent, "Tx");
+            // Ax (approximated output)
+            drawVector(hilbert_center, target_Ax, subalgebraColor, "Ax");
+
+            // Draw error bracket
+            if (err > 0.01) {
+                ctx.beginPath();
+                ctx.strokeStyle = closureColor;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.moveTo(target_Tx.x, target_Tx.y);
+                ctx.lineTo(target_Ax.x, target_Ax.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // Mouse Events
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+            
+            // Check T click
+            const dist_T = Math.sqrt((pos.x - T.x)**2 + (pos.y - T.y)**2);
+            if (dist_T < 15) {
+                dragging = 'T';
+                return;
+            }
+
+            // Check x click (head of vector x)
+            const target_x = { x: hilbert_center.x + vec_x.x, y: hilbert_center.y + vec_x.y };
+            const dist_x = Math.sqrt((pos.x - target_x.x)**2 + (pos.y - target_x.y)**2);
+            if (dist_x < 20) {
+                dragging = 'x';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const pos = getMousePos(e);
+            
+            if (dragging === 'T') {
+                T.x = pos.x;
+                T.y = pos.y;
+            } else if (dragging === 'x') {
+                vec_x.x = pos.x - hilbert_center.x;
+                vec_x.y = pos.y - hilbert_center.y;
+                
+                // Limit vector length
+                const len = Math.sqrt(vec_x.x**2 + vec_x.y**2);
+                if (len > 120) {
+                    vec_x.x = (vec_x.x / len) * 120;
+                    vec_x.y = (vec_x.y / len) * 120;
+                }
+            }
+            draw();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            dragging = null;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            const pos = getMousePos(e.touches[0]);
+            
+            const dist_T = Math.sqrt((pos.x - T.x)**2 + (pos.y - T.y)**2);
+            if (dist_T < 20) {
+                dragging = 'T';
+                return;
+            }
+
+            const target_x = { x: hilbert_center.x + vec_x.x, y: hilbert_center.y + vec_x.y };
+            const dist_x = Math.sqrt((pos.x - target_x.x)**2 + (pos.y - target_x.y)**2);
+            if (dist_x < 25) {
+                dragging = 'x';
+            }
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (!dragging) return;
+            const pos = getMousePos(e.touches[0]);
+            
+            if (dragging === 'T') {
+                T.x = pos.x;
+                T.y = pos.y;
+            } else if (dragging === 'x') {
+                vec_x.x = pos.x - hilbert_center.x;
+                vec_x.y = pos.y - hilbert_center.y;
+                
+                const len = Math.sqrt(vec_x.x**2 + vec_x.y**2);
+                if (len > 120) {
+                    vec_x.x = (vec_x.x / len) * 120;
+                    vec_x.y = (vec_x.y / len) * 120;
+                }
+            }
+            draw();
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchend', () => {
+            dragging = null;
+        });
+
+        resize();
+    </script>
+</body>
+</html>

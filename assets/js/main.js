@@ -9,9 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 1. Theme Management
 function initTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+    let theme = 'light';
+    try {
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+    } catch (e) {
+        console.warn('localStorage is not accessible, using system preference or light mode:', e);
+        try {
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            theme = systemPrefersDark ? 'dark' : 'light';
+        } catch (err) {
+            theme = 'light';
+        }
+    }
     
     document.documentElement.setAttribute('data-theme', theme);
     updateThemeToggleButtonIcon(theme);
@@ -27,7 +38,11 @@ function toggleTheme() {
     const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
     
     document.documentElement.setAttribute('data-theme', nextTheme);
-    localStorage.setItem('theme', nextTheme);
+    try {
+        localStorage.setItem('theme', nextTheme);
+    } catch (e) {
+        console.warn('localStorage setItem failed:', e);
+    }
     updateThemeToggleButtonIcon(nextTheme);
     syncThemeToIframe(nextTheme);
 }
@@ -127,18 +142,57 @@ function setupClipboard() {
             const targetEl = document.getElementById(targetId);
             if (!targetEl) return;
             
-            // Use textContent to copy raw code without span tags
-            navigator.clipboard.writeText(targetEl.textContent).then(() => {
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.style.borderColor = 'var(--hl-tactic)';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.borderColor = '';
-                }, 2000);
-            });
+            const textToCopy = targetEl.textContent;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showCopiedFeedback(btn);
+                }).catch(err => {
+                    console.error('Failed to copy via navigator.clipboard: ', err);
+                    fallbackCopyText(textToCopy, btn);
+                });
+            } else {
+                fallbackCopyText(textToCopy, btn);
+            }
         });
     });
+}
+
+function showCopiedFeedback(btn) {
+    const originalText = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.style.borderColor = 'var(--hl-tactic)';
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.borderColor = '';
+    }, 2000);
+}
+
+function fallbackCopyText(text, btn) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed'; // Avoid scrolling to bottom
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopiedFeedback(btn);
+        } else {
+            console.error('Fallback copy command was unsuccessful');
+            btn.textContent = 'Failed to copy';
+            setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+        }
+    } catch (err) {
+        console.error('Fallback copy failed', err);
+        btn.textContent = 'Failed to copy';
+        setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+    }
+    document.body.removeChild(textArea);
 }
 
 // 4. Expand / Maximize Animation Iframe

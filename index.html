@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yalais - Lean 4 Proof Gallery</title>
     <meta name="description" content="A collection of mathematical proofs with interactive animations and illustrations, formalized in Lean 4.">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=1.3">
 </head>
 <body>
 
@@ -25,13 +25,24 @@
     <!-- Catalog Control Bar -->
     <section class="container">
         <div class="filter-bar">
-            <div class="filter-pills">
-                <button class="filter-pill active" onclick="filterCategory('all')">All Domains</button>
-                <button class="filter-pill" onclick="filterCategory('combinatorics')">Combinatorics</button>
-                <button class="filter-pill" onclick="filterCategory('topology')">Topology</button>
-                <button class="filter-pill" onclick="filterCategory('algebra')">Algebra</button>
+            <div class="filter-pills" id="category-pills">
+                <button class="filter-pill active" onclick="filterCategory('all', this)">All Domains</button>
+                <button class="filter-pill combinatorics" onclick="filterCategory('combinatorics', this)">Combinatorics</button>
+                <button class="filter-pill topology" onclick="filterCategory('topology', this)">Topology</button>
+                <button class="filter-pill analysis" onclick="filterCategory('analysis', this)">Analysis</button>
+                <button class="filter-pill algebra" onclick="filterCategory('algebra', this)">Algebra</button>
+                <button class="filter-pill number-theory" onclick="filterCategory('number-theory', this)">Number Theory</button>
             </div>
             <input type="text" id="search-input" class="search-input" placeholder="Search theorems or keywords..." oninput="handleSearch()">
+            
+            <div class="source-filter-container">
+                <span class="source-filter-label">Source:</span>
+                <div class="filter-pills" id="source-pills">
+                    <button class="filter-pill active" onclick="filterSource('all', this)">All Proofs</button>
+                    <button class="filter-pill local" onclick="filterSource('local', this)">Autonomous Discoveries</button>
+                    <button class="filter-pill benchmark" onclick="filterSource('benchmark', this)">Lean-Eval Benchmark</button>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -40,9 +51,10 @@
         <div class="catalog-grid" id="catalog-grid">
             
             <!-- Unimodal Rearrangement Card -->
-            <article class="theorem-card" data-category="combinatorics" data-keywords="unimodal permutation rearrangement optimality longest increasing subsequence lis hamming distance algorithm" onclick="location.href='theorems/unimodal-rearrangement-optimality.html'">
+            <article class="theorem-card" data-category="combinatorics" data-source="local" data-keywords="unimodal permutation rearrangement optimality longest increasing subsequence lis hamming distance algorithm" onclick="location.href='theorems/unimodal-rearrangement-optimality.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/unimodal_rearrangement_optimality_illustration.png');">
                     <span class="card-badge combinatorics">Combinatorics</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Unimodal Rearrangement Optimality</h3>
@@ -55,9 +67,10 @@
             </article>
 
             <!-- Caro-Wei Card -->
-            <article class="theorem-card" data-category="combinatorics" data-keywords="caro wei independence number graph degrees sum reciprocal" onclick="location.href='theorems/caro-wei.html'">
+            <article class="theorem-card" data-category="combinatorics" data-source="local" data-keywords="caro wei independence number graph degrees sum reciprocal" onclick="location.href='theorems/caro-wei.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/caro_wei_illustration.png');">
                     <span class="card-badge combinatorics">Combinatorics</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Caro–Wei Theorem</h3>
@@ -69,10 +82,43 @@
                 </div>
             </article>
 
+            <!-- Finite Graph Ramsey Theorem Card -->
+            <article class="theorem-card" data-category="combinatorics" data-source="benchmark" data-keywords="ramsey theorem graph complete graph clique cliqueFree finite combinatorics coloring pigeonhole" onclick="location.href='theorems/finite-graph-ramsey-theorem.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/finite_graph_ramsey_theorem_illustration.png');">
+                    <span class="card-badge combinatorics">Combinatorics</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Finite Graph Ramsey Theorem</h3>
+                    <p class="card-desc">Proves the existence of Ramsey numbers $R(r,s)$, showing that any sufficiently large complete graph whose edges are 2-colored contains a monochromatic clique of size $r$ or $s$. Formalized using simple graph cliques.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Combinatorics.SimpleGraph</span>
+                        <a href="theorems/finite-graph-ramsey-theorem.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Catalan Generating Function Relation Card -->
+            <article class="theorem-card" data-category="combinatorics" data-source="benchmark" data-keywords="catalan generating function formal power series series reversion substInv dyck path combinatorics" onclick="location.href='theorems/substInv-X-sub-X-sq-eq-catalan.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/catalan_illustration.png');">
+                    <span class="card-badge combinatorics">Combinatorics</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Catalan Generating Function Relation</h3>
+                    <p class="card-desc">Proves that the compositional inverse (series reversion) of $X-X^2$ is the shifted generating function of the Catalan numbers $X \cdot C(X)$, verified using compositional properties and binomial identities.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.RingTheory.PowerSeries</span>
+                        <a href="theorems/substInv-X-sub-X-sq-eq-catalan.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
             <!-- Hopf Fibration Card -->
-            <article class="theorem-card" data-category="topology" data-keywords="hopf fibration sphere homotopy groups mapping fiber circle" onclick="location.href='theorems/hopf-fibration.html'">
+            <article class="theorem-card" data-category="topology" data-source="local" data-keywords="hopf fibration sphere homotopy groups mapping fiber circle" onclick="location.href='theorems/hopf-fibration.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/hopf_fibration_illustration.png');">
                     <span class="card-badge topology">Topology</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Hopf Fibration</h3>
@@ -85,9 +131,10 @@
             </article>
 
             <!-- Rouché's Theorem Card -->
-            <article class="theorem-card" data-category="topology" data-keywords="rouche zero count complex analysis winding number holomorphy meromorphic contour integral" onclick="location.href='theorems/rouche-zero-count-eq.html'">
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="rouche zero count complex analysis winding number holomorphy meromorphic contour integral" onclick="location.href='theorems/rouche-zero-count-eq.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/rouche_zero_count_eq_illustration.png');">
-                    <span class="card-badge topology">Topology</span>
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Rouché's Theorem</h3>
@@ -100,9 +147,10 @@
             </article>
 
             <!-- Non-Isotopic Links Card -->
-            <article class="theorem-card" data-category="topology" data-keywords="link theory topology isotopy hopf link trivial link contractible complement" onclick="location.href='theorems/exists-nonisotopic-link.html'">
+            <article class="theorem-card" data-category="topology" data-source="benchmark" data-keywords="link theory topology isotopy hopf link trivial link contractible complement" onclick="location.href='theorems/exists-nonisotopic-link.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/exists_nonisotopic_link_illustration.png');">
                     <span class="card-badge topology">Topology</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Existence of Non-Isotopic Links</h3>
@@ -114,10 +162,43 @@
                 </div>
             </article>
 
+            <!-- Fundamental Group of the Circle Card -->
+            <article class="theorem-card" data-category="topology" data-source="benchmark" data-keywords="fundamental group circle topology covering space winding number lift loops" onclick="location.href='theorems/pi1-circle-mulEquiv-int.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/pi1_circle_illustration.png');">
+                    <span class="card-badge topology">Topology</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Fundamental Group of the Circle</h3>
+                    <p class="card-desc">Proves that the fundamental group of the circle is isomorphic to the group of integers, $\pi_1(S^1) \cong \mathbb{Z}$, by using covering spaces and loop winding numbers.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.AlgebraicTopology</span>
+                        <a href="theorems/pi1-circle-mulEquiv-int.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Sturm Separation Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="topology ordinary differential equations ode sturm separation wronskian zeros alternating" onclick="location.href='theorems/sturm-separation.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/sturm_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Sturm Separation Theorem</h3>
+                    <p class="card-desc">Proves that for any two linearly independent solutions $y_1$ and $y_2$ to a homogeneous second-order linear ODE, their zeros strictly alternate. Formalized via Wronskian properties and Rolle's theorem.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Calculus</span>
+                        <a href="theorems/sturm-separation.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
             <!-- Cauchy Sequence of Irreducible Space Card -->
-            <article class="theorem-card" data-category="topology" data-keywords="topology metric space pseudometric space irreducible space cauchy sequence open ball dense set intersection" onclick="location.href='theorems/cauchy-seq-of-irreducible-space.html'">
+            <article class="theorem-card" data-category="topology" data-source="local" data-keywords="topology metric space pseudometric space irreducible space cauchy sequence open ball dense set intersection" onclick="location.href='theorems/cauchy-seq-of-irreducible-space.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/cauchy_seq_of_irreducible_space_illustration.png');">
                     <span class="card-badge topology">Topology</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Cauchy Sequence of Irreducible Space</h3>
@@ -130,9 +211,10 @@
             </article>
 
             <!-- Oppenheim Inequality Card -->
-            <article class="theorem-card" data-category="algebra" data-keywords="oppenheim inequality matrix matrices determinant positive semidefinite hadamard product product eigenvalues" onclick="location.href='theorems/oppenheim.html'">
+            <article class="theorem-card" data-category="algebra" data-source="benchmark" data-keywords="oppenheim inequality matrix matrices determinant positive semidefinite hadamard product product eigenvalues" onclick="location.href='theorems/oppenheim.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/oppenheim_illustration.png');">
                     <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Oppenheim Inequality</h3>
@@ -144,10 +226,27 @@
                 </div>
             </article>
 
-            <!-- Bounded House of Cyclotomic Integers Card -->
-            <article class="theorem-card" data-category="algebra" data-keywords="algebra house cyclotomic kronecker algebraic integers roots of unity" onclick="location.href='theorems/cyclotomic-integer-house-le-two.html'">
-                <div class="card-thumbnail" style="background-image: url('assets/images/cyclotomic_integer_house_le_two_illustration.png');">
+            <!-- Perron-Frobenius Theorem Card -->
+            <article class="theorem-card" data-category="algebra" data-source="benchmark" data-keywords="perron frobenius theorem nonnegative matrix irreducible positive eigenvector spectral radius algebra" onclick="location.href='theorems/perron-frobenius.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/perron_frobenius_illustration.png');">
                     <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Perron-Frobenius Theorem</h3>
+                    <p class="card-desc">Proves that a real irreducible non-negative square matrix always has a real eigenvalue equal to its spectral radius and a corresponding strictly positive eigenvector. Formalized via spectral radius of operator norms and Collatz-Wielandt principle.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.LinearAlgebra.Matrix</span>
+                        <a href="theorems/perron-frobenius.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Bounded House of Cyclotomic Integers Card -->
+            <article class="theorem-card" data-category="number-theory" data-source="benchmark" data-keywords="algebra house cyclotomic kronecker algebraic integers roots of unity" onclick="location.href='theorems/cyclotomic-integer-house-le-two.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/cyclotomic_integer_house_le_two_illustration.png');">
+                    <span class="card-badge number-theory">Number Theory</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Bounded House of Cyclotomic Integers</h3>
@@ -159,10 +258,27 @@
                 </div>
             </article>
 
+            <!-- Complementary Polynomial Card -->
+            <article class="theorem-card" data-category="algebra" data-source="benchmark" data-keywords="algebra complementary polynomial unit circle fejer riesz spectral factorization blaschke reflection" onclick="location.href='theorems/exists-complementary-polynomial-on-unit-circle.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/complementary_polynomial_illustration.png');">
+                    <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Complementary Polynomial on Unit Circle</h3>
+                    <p class="card-desc">Proves that for any complex polynomial $P$ bounded by $1$ on the unit circle $S^1$, there exists a complementary polynomial $Q$ such that $|P(z)|^2 + |Q(z)|^2 = 1$ on $S^1$. Formalized via Blaschke reflections and induction.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Polynomial</span>
+                        <a href="theorems/exists-complementary-polynomial-on-unit-circle.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
             <!-- Cardinality of Finite Boolean Algebras Card -->
-            <article class="theorem-card" data-category="algebra" data-keywords="algebra boolean algebra poset lattice atom cardinality finite set bijection subset" onclick="location.href='theorems/card-finite-boolean-algebra-eq-two-pow-card-atoms.html'">
+            <article class="theorem-card" data-category="algebra" data-source="local" data-keywords="algebra boolean algebra poset lattice atom cardinality finite set bijection subset" onclick="location.href='theorems/card-finite-boolean-algebra-eq-two-pow-card-atoms.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/card_finite_boolean_algebra_eq_two_pow_card_atoms_illustration.png');">
                     <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Cardinality of Finite Boolean Algebras</h3>
@@ -175,9 +291,10 @@
             </article>
 
             <!-- Weierstrass Curve Invariants Card -->
-            <article class="theorem-card" data-category="algebra" data-keywords="weierstrass curve invariants j-invariant c4 c6 discriminant elliptic curves algebra unit nilpotent" onclick="location.href='theorems/weierstrass-curve-invariants.html'">
+            <article class="theorem-card" data-category="algebra" data-source="local" data-keywords="weierstrass curve invariants j-invariant c4 c6 discriminant elliptic curves algebra unit nilpotent" onclick="location.href='theorems/weierstrass-curve-invariants.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/weierstrass_curve_invariants_illustration.png');">
                     <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Weierstrass Curve Invariants</h3>
@@ -190,9 +307,10 @@
             </article>
 
             <!-- Commutator Supremum Distributivity Card -->
-            <article class="theorem-card" data-category="algebra" data-keywords="commutator supremum distributivity join subgroup normal subgroup group theory algebra" onclick="location.href='theorems/commutator-sup-eq-of-normal.html'">
+            <article class="theorem-card" data-category="algebra" data-source="local" data-keywords="commutator supremum distributivity join subgroup normal subgroup group theory algebra" onclick="location.href='theorems/commutator-sup-eq-of-normal.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/commutator_sup_eq_of_normal_illustration.png');">
                     <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Commutator Supremum Distributivity</h3>
@@ -205,9 +323,10 @@
             </article>
 
             <!-- Uniform Distribution on ZMod p Units Card -->
-            <article class="theorem-card" data-category="algebra" data-keywords="algebra probability units zmod prime measure uniform distribution number theory" onclick="location.href='theorems/uniform-of-fintype-to-outer-measure-units.html'">
+            <article class="theorem-card" data-category="algebra" data-source="local" data-keywords="algebra probability units zmod prime measure uniform distribution number theory" onclick="location.href='theorems/uniform-of-fintype-to-outer-measure-units.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/uniform_of_fintype_to_outer_measure_units_illustration.png');">
                     <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source local">Discovery</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">Uniform Distribution on ZMod p Units</h3>
@@ -215,6 +334,182 @@
                     <div class="card-footer">
                         <span class="card-meta">Mathlib.Probability</span>
                         <a href="theorems/uniform-of-fintype-to-outer-measure-units.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Cayley Graph Connectedness Card -->
+            <article class="theorem-card" data-category="combinatorics" data-source="benchmark" data-keywords="cayley graph connectedness group generators algebra relations" onclick="location.href='theorems/mul-cayley-connectedness.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/mul_cayley_connectedness_illustration.png');">
+                    <span class="card-badge combinatorics">Combinatorics</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Connectedness of Cayley Graphs</h3>
+                    <p class="card-desc">Proves that the multiplication Cayley graph of a group $G$ with generating set $S$ is connected if and only if $S$ generates the group.</p>
+                <div class="card-footer">
+                        <span class="card-meta">Mathlib.Combinatorics.SimpleGraph</span>
+                        <a href="theorems/mul-cayley-connectedness.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Cubic ODE Asymptotic Decay Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="cubic decay asymptotic ordinary differential equations ode calculus limits analysis" onclick="location.href='theorems/cubic-decay-asymptotic.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/cubic_decay_asymptotic_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Asymptotic Decay of Cubic ODE Solutions</h3>
+                    <p class="card-desc">Proves that the solution to $y'(t) = -y(t)^3$ with $y(0)=1$ satisfies $y(t)\sqrt{t} \to 1/\sqrt{2}$ as $t \to \infty$.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Calculus</span>
+                        <a href="theorems/cubic-decay-asymptotic.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- BVP Comparison Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="bvp boundary value problem comparison principle differential equations second order inequalities analysis" onclick="location.href='theorems/bvp-comparison.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/bvp_comparison_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Comparison Principle for BVPs</h3>
+                    <p class="card-desc">Proves that if $-u'' \le -v''$ on $(0,1)$ with $u \le v$ at the endpoints, then $u(x) \le v(x)$ on $[0,1]$.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Calculus</span>
+                        <a href="theorems/bvp-comparison.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Dirichlet Laplacian Eigenvalues Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="dirichlet laplacian eigenvalues wave equation trigonometric solutions analysis spectrum" onclick="location.href='theorems/dirichlet-eigenvalues.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/dirichlet_eigenvalues_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Dirichlet Eigenvalues of the Laplacian</h3>
+                    <p class="card-desc">Proves that the eigenvalues of the 1D Dirichlet Laplacian $-y'' = \lambda y$ on $[0, \pi]$ are exactly $n^2$ for $n \in \mathbb{N}^+$.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Calculus</span>
+                        <a href="theorems/dirichlet-eigenvalues.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Linear ODE Stability Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="linear ode stability asymptotic exponential eigenvalues hurwitz matrix differential equations" onclick="location.href='theorems/linear-ode-stability.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/linear_ode_stability_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Asymptotic Stability of Linear ODEs</h3>
+                    <p class="card-desc">Proves that if all eigenvalues of a matrix $A$ have negative real parts, any solution to $x'(t) = A x(t)$ converges to 0.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Calculus</span>
+                        <a href="theorems/linear-ode-stability.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Heat Kernel Fundamental Solution Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="heat kernel equation partial differential equations pde fundamental solution gaussian analysis" onclick="location.href='theorems/heat-kernel-equation.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/heat_kernel_equation_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Heat Kernel as Fundamental Solution</h3>
+                    <p class="card-desc">Proves that the 1D heat kernel $K(t, x, y) = \frac{1}{\sqrt{4\pi t}} e^{-(x-y)^2 / 4t}$ satisfies $\partial_t u = \partial_{xx} u$.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Calculus</span>
+                        <a href="theorems/heat-kernel-equation.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Bing's House with Two Rooms Card -->
+            <article class="theorem-card" data-category="topology" data-source="benchmark" data-keywords="bings house two rooms contractible space collapse topology homotopy retract" onclick="location.href='theorems/house-with-two-rooms.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/house_with_two_rooms_illustration.png');">
+                    <span class="card-badge topology">Topology</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Bing's House is Contractible</h3>
+                    <p class="card-desc">Proves that the classic topological model of a contractible space that is not collapse-reducible (Bing's House) is contractible.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Topology.Homotopy</span>
+                        <a href="theorems/house-with-two-rooms.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Minkowski–Carathéodory Theorem Card -->
+            <article class="theorem-card" data-category="topology" data-source="benchmark" data-keywords="minkowski caratheodory convex hull extreme points dimension topology geometry" onclick="location.href='theorems/minkowski-caratheodory.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/minkowski_caratheodory_illustration.png');">
+                    <span class="card-badge topology">Topology</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Minkowski–Carathéodory Theorem</h3>
+                    <p class="card-desc">Proves that every point in a compact convex set in $\mathbb{R}^d$ is a convex combination of at most $d+1$ extreme points.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Convex.Caratheodory</span>
+                        <a href="theorems/minkowski-caratheodory.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Entrywise Exponential of PSD Matrices Card -->
+            <article class="theorem-card" data-category="algebra" data-source="benchmark" data-keywords="entrywise exponential positive semidefinite matrix matrices schur product taylor series hadamard" onclick="location.href='theorems/pos-semidef-map-exp.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/pos_semidef_map_exp_illustration.png');">
+                    <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Entrywise Exponential of PSD Matrices</h3>
+                    <p class="card-desc">Proves that if a symmetric matrix $A$ is positive semidefinite, then its entrywise exponential $e^{\circ A}$ is also positive semidefinite.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.LinearAlgebra.Matrix</span>
+                        <a href="theorems/pos-semidef-map-exp.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- von Neumann Double Commutant Card -->
+            <article class="theorem-card" data-category="analysis" data-source="benchmark" data-keywords="von neumann double commutant operator algebra star subalgebra closure sot wot hilbert space" onclick="location.href='theorems/von-neumann-double-commutant.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/von_neumann_double_commutant_illustration.png');">
+                    <span class="card-badge analysis">Analysis</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">von Neumann Double Commutant</h3>
+                    <p class="card-desc">Proves that for a star-subalgebra $S$ of bounded operators on a Hilbert space, $S'' = S$ is equivalent to closure in SOT and WOT.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.InnerProductSpace</span>
+                        <a href="theorems/von-neumann-double-commutant.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Brauer Character Values Card -->
+            <article class="theorem-card" data-category="algebra" data-source="benchmark" data-keywords="brauer character cyclotomic field roots of unity group exponent representation trace" onclick="location.href='theorems/brauer-character-cyclotomic.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/brauer_character_cyclotomic_illustration.png');">
+                    <span class="card-badge algebra">Algebra</span>
+                    <span class="card-badge-source benchmark">Benchmark</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Brauer Character Values</h3>
+                    <p class="card-desc">Proves that the values (traces) of any complex representation of a finite group lie in the cyclotomic field generated by the group exponent.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.RepresentationTheory</span>
+                        <a href="theorems/brauer-character-cyclotomic.html" class="card-link">View Proof &rarr;</a>
                     </div>
                 </div>
             </article>
@@ -234,20 +529,19 @@
     <script>
         // Catalog search and filter logic
         let activeCategory = 'all';
+        let activeSource = 'all';
 
-        function filterCategory(cat) {
+        function filterCategory(cat, el) {
             activeCategory = cat;
-            
-            // Update active pill styling
-            const pills = document.querySelectorAll('.filter-pill');
-            pills.forEach(pill => {
-                if (pill.textContent.toLowerCase().includes(cat) || (cat === 'all' && pill.textContent.toLowerCase().includes('all'))) {
-                    pill.classList.add('active');
-                } else {
-                    pill.classList.remove('active');
-                }
-            });
+            document.querySelectorAll('#category-pills .filter-pill').forEach(pill => pill.classList.remove('active'));
+            el.classList.add('active');
+            applyFilters();
+        }
 
+        function filterSource(src, el) {
+            activeSource = src;
+            document.querySelectorAll('#source-pills .filter-pill').forEach(pill => pill.classList.remove('active'));
+            el.classList.add('active');
             applyFilters();
         }
 
@@ -261,13 +555,15 @@
             
             cards.forEach(card => {
                 const category = card.getAttribute('data-category');
-                const keywords = card.getAttribute('data-keywords');
+                const source = card.getAttribute('data-source');
+                const keywords = card.getAttribute('data-keywords') || '';
                 const title = card.querySelector('.card-title').textContent.toLowerCase();
                 
                 const matchesCategory = (activeCategory === 'all' || category === activeCategory);
+                const matchesSource = (activeSource === 'all' || source === activeSource);
                 const matchesSearch = !query || title.includes(query) || keywords.includes(query);
                 
-                if (matchesCategory && matchesSearch) {
+                if (matchesCategory && matchesSource && matchesSearch) {
                     card.style.display = 'flex';
                 } else {
                     card.style.display = 'none';

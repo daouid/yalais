@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BVP Comparison Theorem Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-u: #228be6; /* Blue for u(x) */
+            --color-v: #fa5252; /* Red for v(x) */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-u: #339af0;
+            --color-v: #ff6b6b;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 290px;
+            width: calc(32% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .slider-group {
+            margin-bottom: 8px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">BVP Comparison Explorer</div>
+        <div class="panel-desc">
+            Visualizing the comparison principle: if $-u'' \le -v''$ and boundary values satisfy $u(0) \le v(0)$, $u(1) \le v(1)$, then $u(x) \le v(x)$ on $[0, 1]$.
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Curvature Parameter C_u (-u'' = 2*C_u)</span>
+                <span id="cu-val">-1.00</span>
+            </div>
+            <input type="range" id="cu-slider" min="-3.0" max="3.0" step="0.1" value="-1.0" oninput="updateValues()">
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Curvature Parameter C_v (-v'' = 2*C_v)</span>
+                <span id="cv-val">1.00</span>
+            </div>
+            <input type="range" id="cv-slider" min="-3.0" max="3.0" step="0.1" value="1.0" oninput="updateValues()">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Boundary Difference at 0: v(0) - u(0)</span>
+                <span id="d0-val">0.50</span>
+            </div>
+            <input type="range" id="d0-slider" min="0.0" max="2.0" step="0.05" value="0.5" oninput="updateValues()">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Boundary Difference at 1: v(1) - u(1)</span>
+                <span id="d1-val">0.50</span>
+            </div>
+            <input type="range" id="d1-slider" min="0.0" max="2.0" step="0.05" value="0.5" oninput="updateValues()">
+        </div>
+
+        <div class="stat-line"><span>Condition -u'' &le; -v'':</span><span id="cond-1" class="stat-val">True</span></div>
+        <div class="stat-line"><span>Condition u(0) &le; v(0):</span><span id="cond-2" class="stat-val">True</span></div>
+        <div class="stat-line"><span>Condition u(1) &le; v(1):</span><span id="cond-3" class="stat-val">True</span></div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Result u(x) &le; v(x):</span>
+            <span id="result-status" class="stat-val" style="color: #40c057;">Guaranteed True</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let Cu = -1.0;
+        let Cv = 1.0;
+        let d0 = 0.5;
+        let d1 = 0.5;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateValues() {
+            Cu = parseFloat(document.getElementById('cu-slider').value);
+            Cv = parseFloat(document.getElementById('cv-slider').value);
+            d0 = parseFloat(document.getElementById('d0-slider').value);
+            d1 = parseFloat(document.getElementById('d1-slider').value);
+
+            document.getElementById('cu-val').textContent = Cu.toFixed(2);
+            document.getElementById('cv-val').textContent = Cv.toFixed(2);
+            document.getElementById('d0-val').textContent = d0.toFixed(2);
+            document.getElementById('d1-val').textContent = d1.toFixed(2);
+
+            draw();
+        }
+
+        // Functions:
+        // u(x) = -Cu * x * (1 - x) + (1 - x) * u0 + x * u1
+        // v(x) = -Cv * x * (1 - x) + (1 - x) * v0 + x * v1
+        const u0 = 0.5;
+        const u1 = 0.5;
+        
+        function solveU(x) {
+            return -Cu * x * (1 - x) + (1 - x) * u0 + x * u1;
+        }
+
+        function solveV(x) {
+            const v0 = u0 + d0;
+            const v1 = u1 + d1;
+            return -Cv * x * (1 - x) + (1 - x) * v0 + x * v1;
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorU = styles.getPropertyValue('--color-u').trim();
+            const colorV = styles.getPropertyValue('--color-v').trim();
+
+            const clearSpace = w > 600 ? 310 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40;
+            const originY = h - 50;
+
+            const xMax = 1.0;
+            const yMax = 3.5;
+            const toScreenX = (x) => originX + (x / xMax) * graphW;
+            const toScreenY = (y) => originY - (y / yMax) * graphH;
+
+            // Conditions validation
+            const cond1 = -2 * Cu <= -2 * Cv; // -u'' <= -v''
+            const cond2 = u0 <= u0 + d0; // u(0) <= v(0)
+            const cond3 = u1 <= u1 + d1; // u(1) <= v(1)
+
+            document.getElementById('cond-1').textContent = cond1 ? "True" : "False";
+            document.getElementById('cond-1').style.color = cond1 ? "#40c057" : "#fa5252";
+            document.getElementById('cond-2').textContent = cond2 ? "True" : "False";
+            document.getElementById('cond-3').textContent = cond3 ? "True" : "False";
+
+            // Verify if u(x) <= v(x) everywhere
+            let verified = true;
+            for (let i = 0; i <= 100; i++) {
+                const x = i / 100;
+                if (solveU(x) > solveV(x) + 1e-5) {
+                    verified = false;
+                    break;
+                }
+            }
+
+            const resEl = document.getElementById('result-status');
+            if (verified) {
+                resEl.textContent = "u(x) ≤ v(x) holds!";
+                resEl.style.color = '#40c057';
+            } else {
+                resEl.textContent = "VIOLATED (u(x) > v(x))";
+                resEl.style.color = '#fa5252';
+            }
+
+            // Draw Axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(xMax), toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(0), toScreenY(yMax));
+            ctx.stroke();
+
+            // Grid lines
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "33";
+            ctx.lineWidth = 1;
+            for (let x = 0.25; x < xMax; x += 0.25) {
+                ctx.moveTo(toScreenX(x), toScreenY(0));
+                ctx.lineTo(toScreenX(x), toScreenY(yMax));
+            }
+            for (let y = 1.0; y < yMax; y += 1.0) {
+                ctx.moveTo(toScreenX(0), toScreenY(y));
+                ctx.lineTo(toScreenX(xMax), toScreenY(y));
+            }
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("x", toScreenX(xMax) + 15, toScreenY(0) + 4);
+            ctx.fillText("y", toScreenX(0) - 15, toScreenY(yMax) - 5);
+
+            // Curve points
+            const pointsU = [];
+            const pointsV = [];
+            const steps = 100;
+            for (let i = 0; i <= steps; i++) {
+                const x = i / steps;
+                pointsU.push({ x, y: solveU(x) });
+                pointsV.push({ x, y: solveV(x) });
+            }
+
+            // Draw u(x) (blue)
+            ctx.beginPath();
+            ctx.strokeStyle = colorU;
+            ctx.lineWidth = 2.5;
+            pointsU.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
+                else ctx.lineTo(toScreenX(pt.x), toScreenY(pt.y));
+            });
+            ctx.stroke();
+
+            // Draw v(x) (red)
+            ctx.beginPath();
+            ctx.strokeStyle = colorV;
+            ctx.lineWidth = 2.5;
+            pointsV.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
+                else ctx.lineTo(toScreenX(pt.x), toScreenY(pt.y));
+            });
+            ctx.stroke();
+
+            // Label text on canvas
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillStyle = colorU;
+            ctx.fillText("u(x)", toScreenX(0.5), toScreenY(solveU(0.5)) - 10);
+            ctx.fillStyle = colorV;
+            ctx.fillText("v(x)", toScreenX(0.5), toScreenY(solveV(0.5)) + 15);
+        }
+
+        // Initialize UI and draw
+        updateValues();
+        resize();
+    </script>
+</body>
+</html>

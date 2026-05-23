@@ -29,9 +29,17 @@
     --badge-topology-text: #4c6ef5;
     --badge-topology-border: rgba(76, 110, 245, 0.18);
     
+    --badge-analysis-bg: rgba(224, 49, 49, 0.08);
+    --badge-analysis-text: #e03131;
+    --badge-analysis-border: rgba(224, 49, 49, 0.18);
+    
     --badge-algebra-bg: rgba(18, 184, 134, 0.08);
     --badge-algebra-text: #0ca678;
     --badge-algebra-border: rgba(18, 184, 134, 0.18);
+    
+    --badge-number-theory-bg: rgba(190, 75, 219, 0.08);
+    --badge-number-theory-text: #9c36b5;
+    --badge-number-theory-border: rgba(190, 75, 219, 0.18);
     
     --badge-red-bg: rgba(250, 82, 82, 0.08);
     --badge-red-text: #e03131;
@@ -81,9 +89,17 @@
     --badge-topology-text: #748ffc;
     --badge-topology-border: rgba(92, 124, 250, 0.22);
     
+    --badge-analysis-bg: rgba(255, 107, 107, 0.12);
+    --badge-analysis-text: #ff6b6b;
+    --badge-analysis-border: rgba(255, 107, 107, 0.22);
+    
     --badge-algebra-bg: rgba(32, 201, 151, 0.12);
     --badge-algebra-text: #20c997;
     --badge-algebra-border: rgba(32, 201, 151, 0.22);
+    
+    --badge-number-theory-bg: rgba(218, 119, 242, 0.12);
+    --badge-number-theory-text: #da77f2;
+    --badge-number-theory-border: rgba(218, 119, 242, 0.22);
     
     --badge-red-bg: rgba(255, 107, 107, 0.12);
     --badge-red-text: #ff6b6b;
@@ -506,10 +522,22 @@ a:hover {
     border-color: var(--badge-topology-border);
 }
 
+.badge-tag.analysis, .card-badge.analysis {
+    background: var(--badge-analysis-bg);
+    color: var(--badge-analysis-text);
+    border-color: var(--badge-analysis-border);
+}
+
 .badge-tag.algebra, .card-badge.algebra {
     background: var(--badge-algebra-bg);
     color: var(--badge-algebra-text);
     border-color: var(--badge-algebra-border);
+}
+
+.badge-tag.number-theory, .card-badge.number-theory {
+    background: var(--badge-number-theory-bg);
+    color: var(--badge-number-theory-text);
+    border-color: var(--badge-number-theory-border);
 }
 
 .badge-tag.red, .card-badge.red {
@@ -539,7 +567,9 @@ a:hover {
 /* Text Accent Highlights */
 .text-combinatorics { color: var(--badge-combinatorics-text); font-weight: 600; }
 .text-topology { color: var(--badge-topology-text); font-weight: 600; }
+.text-analysis { color: var(--badge-analysis-text); font-weight: 600; }
 .text-algebra { color: var(--badge-algebra-text); font-weight: 600; }
+.text-number-theory { color: var(--badge-number-theory-text); font-weight: 600; }
 .text-red { color: var(--badge-red-text); font-weight: 600; }
 .text-purple { color: var(--badge-purple-text); font-weight: 600; }
 
@@ -854,3 +884,202 @@ a:hover {
     border-radius: 4px;
     opacity: 0.3;
 }
+
+/* Source Filter and Badge Styles */
+.source-filter-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.source-filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Card Source Badge */
+.card-badge-source {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    border: 1px solid transparent;
+}
+
+.card-badge-source.local {
+    background: rgba(189, 75, 219, 0.15); /* Purple for local discoveries */
+    color: #9c36b5;
+    border-color: rgba(189, 75, 219, 0.3);
+}
+
+[data-theme="dark"] .card-badge-source.local {
+    background: rgba(218, 119, 242, 0.2);
+    color: #da77f2;
+    border-color: rgba(218, 119, 242, 0.4);
+}
+
+.card-badge-source.benchmark {
+    background: rgba(76, 110, 245, 0.15); /* Blue for benchmark solves */
+    color: #4c6ef5;
+    border-color: rgba(76, 110, 245, 0.3);
+}
+
+[data-theme="dark"] .card-badge-source.benchmark {
+    background: rgba(92, 124, 250, 0.2);
+    color: #748ffc;
+    border-color: rgba(92, 124, 250, 0.4);
+}
+
+/* Detail page source tag specific overrides */
+.badge-tag.local {
+    background: var(--badge-purple-bg);
+    color: var(--badge-purple-text);
+    border-color: var(--badge-purple-border);
+}
+
+.badge-tag.benchmark {
+    background: var(--badge-topology-bg);
+    color: var(--badge-topology-text);
+    border-color: var(--badge-topology-border);
+}
+
+/* Color-coded filter pills active/hover/inactive overrides */
+.filter-pill {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Inactive themed states */
+.filter-pill.combinatorics {
+    background: var(--badge-combinatorics-bg);
+    color: var(--badge-combinatorics-text);
+    border-color: var(--badge-combinatorics-border);
+    opacity: 0.6;
+}
+.filter-pill.topology {
+    background: var(--badge-topology-bg);
+    color: var(--badge-topology-text);
+    border-color: var(--badge-topology-border);
+    opacity: 0.6;
+}
+.filter-pill.analysis {
+    background: var(--badge-analysis-bg);
+    color: var(--badge-analysis-text);
+    border-color: var(--badge-analysis-border);
+    opacity: 0.6;
+}
+.filter-pill.algebra {
+    background: var(--badge-algebra-bg);
+    color: var(--badge-algebra-text);
+    border-color: var(--badge-algebra-border);
+    opacity: 0.6;
+}
+.filter-pill.number-theory {
+    background: var(--badge-number-theory-bg);
+    color: var(--badge-number-theory-text);
+    border-color: var(--badge-number-theory-border);
+    opacity: 0.6;
+}
+.filter-pill.local {
+    background: var(--badge-purple-bg);
+    color: var(--badge-purple-text);
+    border-color: var(--badge-purple-border);
+    opacity: 0.6;
+}
+.filter-pill.benchmark {
+    background: var(--badge-topology-bg);
+    color: var(--badge-topology-text);
+    border-color: var(--badge-topology-border);
+    opacity: 0.6;
+}
+
+/* Hover state - lift and increase opacity */
+.filter-pill.combinatorics:hover,
+.filter-pill.topology:hover,
+.filter-pill.analysis:hover,
+.filter-pill.algebra:hover,
+.filter-pill.number-theory:hover,
+.filter-pill.local:hover,
+.filter-pill.benchmark:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
+}
+
+/* Active selected state - solid fill, shadow glow, full opacity */
+.filter-pill.combinatorics.active {
+    background: var(--badge-combinatorics-text);
+    color: #ffffff;
+    border-color: var(--badge-combinatorics-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-combinatorics-border);
+}
+[data-theme="dark"] .filter-pill.combinatorics.active {
+    color: #12131a;
+}
+
+.filter-pill.topology.active {
+    background: var(--badge-topology-text);
+    color: #ffffff;
+    border-color: var(--badge-topology-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-topology-border);
+}
+
+.filter-pill.analysis.active {
+    background: var(--badge-analysis-text);
+    color: #ffffff;
+    border-color: var(--badge-analysis-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-analysis-border);
+}
+
+.filter-pill.algebra.active {
+    background: var(--badge-algebra-text);
+    color: #ffffff;
+    border-color: var(--badge-algebra-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-algebra-border);
+}
+[data-theme="dark"] .filter-pill.algebra.active {
+    color: #12131a;
+}
+
+.filter-pill.number-theory.active {
+    background: var(--badge-number-theory-text);
+    color: #ffffff;
+    border-color: var(--badge-number-theory-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-number-theory-border);
+}
+
+.filter-pill.local.active {
+    background: var(--badge-purple-text);
+    color: #ffffff;
+    border-color: var(--badge-purple-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-purple-border);
+}
+
+.filter-pill.benchmark.active {
+    background: var(--badge-topology-text);
+    color: #ffffff;
+    border-color: var(--badge-topology-text);
+    opacity: 1;
+    box-shadow: 0 4px 14px var(--badge-topology-border);
+}
+
+
+

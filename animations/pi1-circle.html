@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fundamental Group of the Circle (Winding Number)</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 260px;
+            width: calc(25% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            min-width: 35px;
+            background: var(--node-default);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover {
+            border-color: var(--accent);
+        }
+        button.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+        .slider-group {
+            margin-top: 10px;
+        }
+        .slider-label {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Circle Homotopy Winding</div>
+        <div class="panel-desc">Visualizes loops in the circle $S^1$ and their lift to the covering space $\mathbb{R}$ (represented as a helix).</div>
+        <div class="stat-line"><span>Winding Number ($n$):</span><span id="winding-val" class="stat-val" style="color: var(--accent);">1</span></div>
+        <div class="stat-line"><span>Path Parameter ($t$):</span><span id="param-val" class="stat-val">0.00</span></div>
+        <div class="stat-line"><span>Lift Endpoint ($\tilde{\gamma}(1)$):</span><span id="endpoint-val" class="stat-val">1.00</span></div>
+        
+        <div class="panel-title" style="margin-top: 12px; font-size: 11px;">Select Winding Number:</div>
+        <div class="btn-group">
+            <button onclick="setWinding(-3)">-3</button>
+            <button onclick="setWinding(-2)">-2</button>
+            <button onclick="setWinding(-1)">-1</button>
+            <button onclick="setWinding(0)">0</button>
+            <button onclick="setWinding(1)" class="active">1</button>
+            <button onclick="setWinding(2)">2</button>
+            <button onclick="setWinding(3)">3</button>
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label"><span>Animation Speed:</span><span id="speed-val">Medium</span></div>
+            <input type="range" id="speed-slider" min="1" max="100" value="30" oninput="updateSpeed()">
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let windingNumber = 1;
+        let t = 0; // parameter [0, 1]
+        let speed = 0.003;
+        let lastTime = 0;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function setWinding(n) {
+            windingNumber = n;
+            t = 0; // Reset loop animation on click
+            document.querySelectorAll('.btn-group button').forEach(btn => {
+                if (parseInt(btn.textContent) === n) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            document.getElementById('winding-val').textContent = n;
+            document.getElementById('endpoint-val').textContent = n.toFixed(2);
+        }
+
+        function updateSpeed() {
+            const sliderVal = document.getElementById('speed-slider').value;
+            speed = 0.0001 * sliderVal;
+            const labels = ["Very Slow", "Slow", "Medium", "Fast", "Very Fast"];
+            const index = Math.min(Math.floor(sliderVal / 20), 4);
+            document.getElementById('speed-val').textContent = labels[index];
+        }
+
+        function animate(timestamp) {
+            t += speed;
+            if (t > 1) t = 0;
+            
+            document.getElementById('param-val').textContent = t.toFixed(2);
+            document.getElementById('endpoint-val').textContent = (t * windingNumber).toFixed(2);
+
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            
+            // Set coordinate domains (shifted to make space for control panel on left)
+            const clearSpace = w > 600 ? 260 : 0;
+            const partitionWidth = (w - clearSpace) / 2;
+            const c1_x = clearSpace + partitionWidth / 2;
+            const c2_x = clearSpace + partitionWidth * 1.5;
+            const centerY = h / 2;
+            
+            // Radius of base circle
+            const r = Math.min(partitionWidth * 0.35, h * 0.35);
+
+            // ================== LEFT SIDE: Base Space S^1 ==================
+            // Draw S^1 circle
+            ctx.beginPath();
+            ctx.arc(c1_x, centerY, r, 0, 2 * Math.PI);
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Draw base point (1,0) at (c1_x + r, centerY)
+            ctx.beginPath();
+            ctx.arc(c1_x + r, centerY, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = textColor;
+            ctx.fill();
+
+            // Label base point "1"
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText("x₀ = 1", c1_x + r + 10, centerY + 4);
+
+            // Draw the loop trace up to t
+            ctx.beginPath();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = accent;
+            
+            const steps = 100;
+            for (let i = 0; i <= steps; i++) {
+                const fraction = (i / steps) * t;
+                const angle = fraction * windingNumber * 2 * Math.PI;
+                const x = c1_x + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw travelling point γ(t)
+            const currentAngle = t * windingNumber * 2 * Math.PI;
+            const currentX = c1_x + r * Math.cos(currentAngle);
+            const currentY = centerY + r * Math.sin(currentAngle);
+            
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = accent;
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Label travelling point
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 12px sans-serif";
+            ctx.fillText("γ(t)", currentX + 12, currentY - 6);
+
+
+            // ================== RIGHT SIDE: Covering Space R (Helix) ==================
+            // Draw vertical axis (the real line R)
+            ctx.beginPath();
+            ctx.moveTo(c2_x, centerY - r * 1.5);
+            ctx.lineTo(c2_x, centerY + r * 1.5);
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw tick marks for integer values on the real line
+            // Scale: 1 unit = r * 0.4
+            const unitScale = r * 0.4;
+            const maxTicks = 4;
+            ctx.fillStyle = textColor;
+            ctx.font = "9px monospace";
+            ctx.textAlign = "right";
+
+            for (let i = -maxTicks; i <= maxTicks; i++) {
+                const tickY = centerY - i * unitScale;
+                ctx.beginPath();
+                ctx.moveTo(c2_x - 6, tickY);
+                ctx.lineTo(c2_x + 6, tickY);
+                ctx.strokeStyle = borderColor;
+                ctx.stroke();
+                
+                ctx.fillText(`${i > 0 ? '+' : ''}${i}`, c2_x - 10, tickY + 3);
+            }
+
+            // Draw Helix curve (the spiral path)
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = borderColor + "44"; // transparent spiral showing potential path
+            const spiralSteps = 300;
+            const totalTurns = 4;
+            for (let i = -spiralSteps; i <= spiralSteps; i++) {
+                const fraction = i / (spiralSteps / totalTurns);
+                const angle = fraction * 2 * Math.PI;
+                const hx = c2_x + (r * 0.4) * Math.cos(angle);
+                const hy = centerY - fraction * unitScale;
+                if (i === -spiralSteps) ctx.moveTo(hx, hy);
+                else ctx.lineTo(hx, hy);
+            }
+            ctx.stroke();
+
+            // Draw the lifted path up to t
+            ctx.beginPath();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = accent;
+            
+            const liftSteps = 150;
+            for (let i = 0; i <= liftSteps; i++) {
+                const fraction = (i / liftSteps) * t;
+                const value = fraction * windingNumber;
+                const angle = value * 2 * Math.PI;
+                const hx = c2_x + (r * 0.4) * Math.cos(angle);
+                const hy = centerY - value * unitScale;
+                if (i === 0) ctx.moveTo(hx, hy);
+                else ctx.lineTo(hx, hy);
+            }
+            ctx.stroke();
+
+            // Draw travelling lifted point ~γ(t)
+            const liftVal = t * windingNumber;
+            const liftAngle = liftVal * 2 * Math.PI;
+            const liftX = c2_x + (r * 0.4) * Math.cos(liftAngle);
+            const liftY = centerY - liftVal * unitScale;
+
+            ctx.beginPath();
+            ctx.arc(liftX, liftY, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = accent;
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Label lifted point
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 12px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText("~γ(t)", liftX + 12, liftY - 6);
+        }
+
+        // Initialize
+        updateSpeed();
+        initGraph();
+        resize();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

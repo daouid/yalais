@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sturm Separation Theorem Explorer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --color-y1: #228be6; /* Blue for y1 */
+            --color-y2: #fa5252; /* Red for y2 */
+            --color-wronskian: #be4bdb; /* Purple for Wronskian */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #12131a;
+            --color-y1: #339af0;
+            --color-y2: #ff6b6b;
+            --color-wronskian: #d0bfff;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .panel-desc {
+            font-size: 11px;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .select-group {
+            margin-bottom: 12px;
+        }
+        .select-label {
+            font-size: 10px;
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 600;
+        }
+        select {
+            width: 100%;
+            padding: 6px;
+            background: var(--node-default);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .slider-group {
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin: 0;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Sturm Separation Explorer</div>
+        <div class="panel-desc">
+            Visualizing the interlacing zeros of two independent solutions $y_1$ and $y_2$ to the second-order linear ODE: $y'' + p(x)y' + q(x)y = 0$.
+        </div>
+        
+        <div class="select-group">
+            <span class="select-label">Choose Equation (Coefficients)</span>
+            <select id="eq-select" onchange="changeEquation()">
+                <option value="harmonic">Harmonic: y'' + y = 0</option>
+                <option value="airy">Airy: y'' + x y = 0</option>
+                <option value="damped">Damped: y'' + 0.2y' + 2y = 0</option>
+                <option value="sturm_liouville">Sturm-Liouville: y'' - (1/(x+2))y' + (x+1)y = 0</option>
+            </select>
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Phase of y₂ (Angle α)</span>
+                <span id="phase-val">45°</span>
+            </div>
+            <input type="range" id="phase-slider" min="0" max="180" step="1" value="45" oninput="updatePhase()">
+        </div>
+
+        <div class="stat-line"><span>y₁ Initial Cond.:</span><span class="stat-val" style="color: var(--color-y1);">y(0)=0.0, y'(0)=1.0</span></div>
+        <div class="stat-line"><span>y₂ Initial Cond.:</span><span id="y2-init-val" class="stat-val" style="color: var(--color-y2);">y(0)=0.71, y'(0)=0.71</span></div>
+        <div class="stat-line">
+            <span>Wronskian W(x):</span>
+            <span id="wronskian-val" class="stat-val" style="color: var(--color-wronskian);">-0.707</span>
+        </div>
+        <div class="stat-line" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+            <span>Linear Independence:</span>
+            <span id="li-status" class="stat-val" style="color: #40c057;">True (W ≠ 0)</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const equations = {
+            harmonic: {
+                p: (x) => 0,
+                q: (x) => 1
+            },
+            airy: {
+                p: (x) => 0,
+                q: (x) => x
+            },
+            damped: {
+                p: (x) => 0.2,
+                q: (x) => 2
+            },
+            sturm_liouville: {
+                p: (x) => -1 / (x + 2),
+                q: (x) => x + 1
+            }
+        };
+
+        let currentEqKey = 'harmonic';
+        let alphaDeg = 45; // phase angle in degrees
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function changeEquation() {
+            currentEqKey = document.getElementById('eq-select').value;
+            draw();
+        }
+
+        function updatePhase() {
+            alphaDeg = parseInt(document.getElementById('phase-slider').value);
+            document.getElementById('phase-val').textContent = `${alphaDeg}°`;
+            draw();
+        }
+
+        // RK4 ODE Solver
+        function solveODE(pFunc, qFunc, y0, v0, xMax, steps) {
+            const h = xMax / steps;
+            const path = [];
+            let x = 0;
+            let y = y0;
+            let v = v0;
+            
+            path.push({ x, y, v });
+
+            for (let i = 0; i < steps; i++) {
+                const dydx = (xVal, yVal, vVal) => vVal;
+                const dvdx = (xVal, yVal, vVal) => -pFunc(xVal) * vVal - qFunc(xVal) * yVal;
+
+                // k1
+                const ky1 = dydx(x, y, v);
+                const kv1 = dvdx(x, y, v);
+
+                // k2
+                const x2 = x + h / 2;
+                const y2 = y + (h / 2) * ky1;
+                const v2 = v + (h / 2) * kv1;
+                const ky2 = dydx(x2, y2, v2);
+                const kv2 = dvdx(x2, y2, v2);
+
+                // k3
+                const x3 = x + h / 2;
+                const y3 = y + (h / 2) * ky2;
+                const v3 = v + (h / 2) * kv2;
+                const ky3 = dydx(x3, y3, v3);
+                const kv3 = dvdx(x3, y3, v3);
+
+                // k4
+                const x4 = x + h;
+                const y4 = y + h * ky3;
+                const v4 = v + h * kv3;
+                const ky4 = dydx(x4, y4, v4);
+                const kv4 = dvdx(x4, y4, v4);
+
+                // update
+                y = y + (h / 6) * (ky1 + 2 * ky2 + 2 * ky3 + ky4);
+                v = v + (h / 6) * (kv1 + 2 * kv2 + 2 * kv3 + kv4);
+                x = x + h;
+
+                path.push({ x, y, v });
+            }
+            return path;
+        }
+
+        // Find zeros (crossings) by linear interpolation
+        function findZeros(path) {
+            const zeros = [];
+            for (let i = 0; i < path.length - 1; i++) {
+                const p1 = path[i];
+                const p2 = path[i + 1];
+                if (p1.y * p2.y <= 0 && p1.y !== p2.y) {
+                    // Linear interpolation to find crossing point x
+                    const t = -p1.y / (p2.y - p1.y);
+                    const zx = p1.x + t * (p2.x - p1.x);
+                    zeros.push(zx);
+                }
+            }
+            return zeros;
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const colorY1 = styles.getPropertyValue('--color-y1').trim();
+            const colorY2 = styles.getPropertyValue('--color-y2').trim();
+            const colorW = styles.getPropertyValue('--color-wronskian').trim();
+
+            const clearSpace = w > 600 ? 300 : 0;
+            const graphW = w - clearSpace - 80;
+            const graphH = h - 100;
+            const originX = clearSpace + 40;
+            const originY = h / 2;
+
+            // Coordinate mapping
+            const xMax = 8;
+            const yMax = 3;
+            const toScreenX = (x) => originX + (x / xMax) * graphW;
+            const toScreenY = (y) => originY - (y / yMax) * (graphH / 2);
+
+            // 1. Draw Grid Lines
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "44";
+            ctx.lineWidth = 1;
+            // Vertical grid lines
+            for (let x = 1; x <= xMax; x++) {
+                const sx = toScreenX(x);
+                ctx.moveTo(sx, toScreenY(-yMax));
+                ctx.lineTo(sx, toScreenY(yMax));
+            }
+            // Horizontal grid lines
+            for (let y = -2; y <= 2; y++) {
+                if (y !== 0) {
+                    const sy = toScreenY(y);
+                    ctx.moveTo(toScreenX(0), sy);
+                    ctx.lineTo(toScreenX(xMax), sy);
+                }
+            }
+            ctx.stroke();
+
+            // Main Axes
+            ctx.beginPath();
+            ctx.strokeStyle = borderColor + "88";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(xMax), toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(-yMax));
+            ctx.lineTo(toScreenX(0), toScreenY(yMax));
+            ctx.stroke();
+
+            // Axis Labels
+            ctx.fillStyle = textColor;
+            ctx.font = "italic 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("x", toScreenX(xMax) + 15, toScreenY(0) + 4);
+            ctx.fillText("y", toScreenX(0), toScreenY(yMax) - 15);
+
+            // 2. Solve ODEs
+            const eq = equations[currentEqKey];
+            const radAlpha = (alphaDeg * Math.PI) / 180;
+            const y2_0 = Math.cos(radAlpha);
+            const v2_0 = Math.sin(radAlpha);
+
+            document.getElementById('y2-init-val').textContent = `y(0)=${y2_0.toFixed(2)}, y'(0)=${v2_0.toFixed(2)}`;
+
+            const pathY1 = solveODE(eq.p, eq.q, 0, 1, xMax, 200);
+            const pathY2 = solveODE(eq.p, eq.q, y2_0, v2_0, xMax, 200);
+
+            // Zeros
+            const zerosY1 = findZeros(pathY1);
+            const zerosY2 = findZeros(pathY2);
+
+            // Wronskian: W = y1 * y2' - y2 * y1'
+            // Since y1(0)=0, y1'(0)=1, and y2(0)=cos(a), y2'(0)=sin(a):
+            // W(0) = 0 * sin(a) - cos(a) * 1 = -cos(a)
+            const W0 = -y2_0;
+            document.getElementById('wronskian-val').textContent = W0.toFixed(3);
+
+            const isLI = Math.abs(W0) > 0.01;
+            const liEl = document.getElementById('li-status');
+            if (isLI) {
+                liEl.textContent = `True (W = ${W0.toFixed(2)})`;
+                liEl.style.color = '#40c057';
+            } else {
+                liEl.textContent = `False (W ≈ 0, Dependent)`;
+                liEl.style.color = '#fa5252';
+            }
+
+            // 3. Shaded bands between y1 zeros
+            if (zerosY1.length >= 2) {
+                ctx.fillStyle = colorY1 + "11";
+                for (let i = 0; i < zerosY1.length - 1; i++) {
+                    const zStart = zerosY1[i];
+                    const zEnd = zerosY1[i + 1];
+                    const sx1 = toScreenX(zStart);
+                    const sx2 = toScreenX(zEnd);
+                    ctx.fillRect(sx1, toScreenY(yMax), sx2 - sx1, graphH);
+                    
+                    // Draw a light dashed boundary
+                    ctx.beginPath();
+                    ctx.strokeStyle = colorY1 + "33";
+                    ctx.setLineDash([4, 4]);
+                    ctx.moveTo(sx1, toScreenY(yMax));
+                    ctx.lineTo(sx1, toScreenY(-yMax));
+                    ctx.moveTo(sx2, toScreenY(yMax));
+                    ctx.lineTo(sx2, toScreenY(-yMax));
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // 4. Draw Curves
+            ctx.lineWidth = 2.5;
+
+            // y1 (blue)
+            ctx.beginPath();
+            ctx.strokeStyle = colorY1;
+            pathY1.forEach((pt, idx) => {
+                const sx = toScreenX(pt.x);
+                const sy = toScreenY(pt.y);
+                if (idx === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            });
+            ctx.stroke();
+
+            // y2 (red)
+            ctx.beginPath();
+            ctx.strokeStyle = colorY2;
+            pathY2.forEach((pt, idx) => {
+                const sx = toScreenX(pt.x);
+                const sy = toScreenY(pt.y);
+                if (idx === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            });
+            ctx.stroke();
+
+            // 5. Draw Zero Dots on Axis
+            // Blue dots for y1 zeros
+            zerosY1.forEach(zx => {
+                ctx.beginPath();
+                ctx.arc(toScreenX(zx), toScreenY(0), 6, 0, Math.PI * 2);
+                ctx.fillStyle = colorY1;
+                ctx.fill();
+                ctx.strokeStyle = textColor;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // Red dots for y2 zeros
+            zerosY2.forEach(zx => {
+                ctx.beginPath();
+                ctx.arc(toScreenX(zx), toScreenY(0), 6, 0, Math.PI * 2);
+                ctx.fillStyle = colorY2;
+                ctx.fill();
+                ctx.strokeStyle = textColor;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // Add labels to graphs
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillStyle = colorY1;
+            ctx.fillText("y₁(x)", toScreenX(1.5), toScreenY(pathY1[30].y) - 10);
+            ctx.fillStyle = colorY2;
+            ctx.fillText("y₂(x)", toScreenX(1.5), toScreenY(pathY2[30].y) - 10);
+        }
+
+        // Initialize
+        resize();
+    </script>
+</body>
+</html>
