@@ -54,81 +54,69 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            right: 20px;
+            max-width: 240px;
+            width: calc(25% - 20px);
             background: var(--panel-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 14px 20px;
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
             z-index: 10;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .panel-left {
-            display: flex;
             flex-direction: column;
-            gap: 4px;
         }
         .panel-title {
-            font-size: 15px;
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2px;
         }
         .panel-subtitle {
-            font-size: 11px;
+            font-size: 10px;
             opacity: 0.7;
-        }
-        .controls-row {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-grow: 1;
-            justify-content: flex-end;
-            max-width: 700px;
+            margin-bottom: 10px;
         }
         .slider-group {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-grow: 1;
-            min-width: 200px;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
         }
         label {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
-            white-space: nowrap;
         }
         input[type="range"] {
             width: 100%;
             accent-color: var(--accent);
             cursor: pointer;
+            margin: 0;
         }
         .value-display {
-            font-size: 11px;
+            font-size: 10px;
             font-family: monospace;
-            width: 40px;
-            text-align: right;
+            font-weight: bold;
         }
         .btn-group {
             display: flex;
-            gap: 8px;
+            gap: 4px;
+            margin-bottom: 12px;
         }
         button {
+            flex: 1;
             background: var(--bg-color);
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 11px;
+            padding: 6px 0;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 2px 4px var(--shadow-color);
+            box-shadow: 0 1px 2px var(--shadow-color);
         }
         button:hover {
             border-color: var(--accent);
@@ -139,113 +127,90 @@
             color: white;
             border-color: var(--accent);
         }
-        .status-banners {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .status-card {
-            background: var(--panel-bg);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+        .status-card-inner {
+            background: rgba(0, 0, 0, 0.02);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 10px 16px;
-            box-shadow: 0 4px 15px var(--shadow-color);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        [data-theme="dark"] .status-card-inner {
+            background: rgba(255, 255, 255, 0.02);
         }
         .status-header {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .status-desc {
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 9px;
+            line-height: 1.3;
             opacity: 0.8;
         }
         .status-pill {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 1px 4px;
+            border-radius: 3px;
         }
         .status-pill.success {
-            background: rgba(12, 133, 153, 0.15);
+            background: rgba(12, 133, 153, 0.12);
             color: var(--blue);
         }
         .status-pill.danger {
-            background: rgba(224, 49, 49, 0.15);
+            background: rgba(224, 49, 49, 0.12);
             color: var(--danger);
-        }
-        @media (max-width: 768px) {
-            .control-panel {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .controls-row {
-                justify-content: space-between;
-                max-width: 100%;
-            }
-            .status-banners {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
         }
     </style>
 </head>
 <body>
     <div class="control-panel">
-        <div class="panel-left">
-            <div class="panel-title">Link Contraction & Homotopy</div>
-            <div class="panel-subtitle">Trivial Link (L₁) vs Hopf Link (L₂) in R³ \ C</div>
-        </div>
-        <div class="controls-row">
-            <div class="slider-group">
-                <label for="s-slider">Contraction (s):</label>
-                <input type="range" id="s-slider" min="0" max="1" step="0.005" value="0">
+        <div class="panel-title">Link Homotopy</div>
+        <div class="panel-subtitle">Trivial vs Hopf Link in R³ \ C</div>
+        
+        <div class="slider-group">
+            <label for="s-slider">Contraction (s):</label>
+            <input type="range" id="s-slider" min="0" max="1" step="0.005" value="0">
+            <div style="display: flex; justify-content: space-between; font-size: 10px; width: 100%; margin-top: 2px;">
+                <span>Value:</span>
                 <span class="value-display" id="s-val">0.00</span>
             </div>
-            <div class="btn-group">
-                <button id="play-btn">Play</button>
-                <button id="rot-btn" class="active">Rotate</button>
-                <button id="reset-btn">Reset</button>
+        </div>
+        
+        <div class="btn-group">
+            <button id="play-btn">Play</button>
+            <button id="rot-btn" class="active">Rotate</button>
+            <button id="reset-btn">Reset</button>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+            <div class="status-card-inner">
+                <div class="status-header">
+                    <span>L₁: Trivial Link</span>
+                    <span class="status-pill success" id="l1-pill">Safe (s=0.00)</span>
+                </div>
+                <div class="status-desc" id="l1-desc">
+                    The blue circle K₁ lies at z = 2. As s increases, K₁ shrinks smoothly to a point at (0, 0, 2) without ever intersecting the base circle C (z = 0).
+                </div>
+            </div>
+            
+            <div class="status-card-inner">
+                <div class="status-header">
+                    <span>L₂: Hopf Link</span>
+                    <span class="status-pill success" id="l2-pill">Safe (s=0.00)</span>
+                </div>
+                <div class="status-desc" id="l2-desc">
+                    The orange circle K₂ is linked with C. As s increases, K₂ shrinks towards the origin. At s = 0.50, it must collide with C at (1, 0, 0)!
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="status-banners">
-        <div class="status-card">
-            <div class="status-header">
-                <span>L₁: Trivial Link (Unlinked)</span>
-                <span class="status-pill success" id="l1-pill">Safe (s=0.00)</span>
-            </div>
-            <div class="status-desc" id="l1-desc">
-                The blue circle K₁ lies at z = 2. As s increases, K₁ shrinks smoothly to a point at (0, 0, 2) without ever intersecting the base circle C (z = 0).
-            </div>
-        </div>
-        <div class="status-card">
-            <div class="status-header">
-                <span>L₂: Hopf Link (Linked)</span>
-                <span class="status-pill success" id="l2-pill">Safe (s=0.00)</span>
-            </div>
-            <div class="status-desc" id="l2-desc">
-                The orange circle K₂ is linked with C. As s increases, K₂ shrinks towards the origin. At s = 0.50, it must collide with C at (1, 0, 0)!
-            </div>
-        </div>
-    </div>
-
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas"> </canvas>
 
     <script>
         const canvas = document.getElementById('canvas');
@@ -434,29 +399,33 @@
             const borderColor = styles.getPropertyValue('--border-color').trim();
             const textColor = styles.getPropertyValue('--text-color').trim();
             
+            const leftOffset = w > 600 ? 240 : 0;
+            const drawW = w - leftOffset;
+            const centerY = h / 2;
+            const scale = Math.min(drawW / 4, h * 0.35);
+
+            const v1_centerX = leftOffset + drawW / 4;
+            const v2_centerX = leftOffset + 3 * drawW / 4;
+
             ctx.strokeStyle = borderColor;
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(w / 2, 0);
-            ctx.lineTo(w / 2, h);
+            ctx.moveTo(leftOffset + drawW / 2, 0);
+            ctx.lineTo(leftOffset + drawW / 2, h);
             ctx.stroke();
 
-            // Set up drawing parameters for left and right
-            const scale = Math.min(w / 4, h) * 0.4;
-            const centerY = h / 2 + 30; // Push down slightly to clear header
-
             // Render Left side (Link 1 - Trivial)
-            renderViewport(w / 4, centerY, scale, 1);
+            renderViewport(v1_centerX, centerY, scale, 1);
 
             // Render Right side (Link 2 - Hopf)
-            renderViewport(3 * w / 4, centerY, scale, 2);
+            renderViewport(v2_centerX, centerY, scale, 2);
 
             // Draw labels
             ctx.fillStyle = textColor;
-            ctx.font = 'bold 13px var(--font-sans)';
+            ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText("Trivial Link L₁ (Unlinked)", w / 4, 85);
-            ctx.fillText("Hopf Link L₂ (Linked)", 3 * w / 4, 85);
+            ctx.fillText("Trivial Link L₁ (Unlinked)", v1_centerX, centerY - scale * 1.5);
+            ctx.fillText("Hopf Link L₂ (Linked)", v2_centerX, centerY - scale * 1.5);
         }
 
         function renderViewport(centerX, centerY, scale, linkId) {
@@ -464,12 +433,12 @@
 
             // Colors from CSS
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const purpleColor = isDark ? 'rgba(218, 119, 242, 0.85)' : 'rgba(156, 54, 181, 0.85)';
-            const purpleDiskColor = isDark ? 'rgba(218, 119, 242, 0.12)' : 'rgba(156, 54, 181, 0.15)';
-            
-            const blueColor = isDark ? 'rgba(34, 184, 207, 0.9)' : 'rgba(12, 133, 153, 0.9)';
-            const orangeColor = isDark ? 'rgba(252, 196, 25, 0.9)' : 'rgba(230, 95, 0, 0.9)';
-            const redColor = isDark ? 'rgba(255, 107, 107, 1)' : 'rgba(224, 49, 49, 1)';
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const purpleColor = styles.getPropertyValue('--purple').trim();
+            const blueColor = styles.getPropertyValue('--blue').trim();
+            const orangeColor = styles.getPropertyValue('--orange').trim();
+            const redColor = styles.getPropertyValue('--danger').trim();
 
             // 1. Generate Base Circle C
             const C_pts_raw = getBaseCirclePoints();
@@ -513,8 +482,10 @@
                         ctx.lineTo(p1.x, p1.y);
                         ctx.lineTo(p2.x, p2.y);
                         ctx.closePath();
-                        ctx.fillStyle = purpleDiskColor;
+                        ctx.fillStyle = purpleColor;
+                        ctx.globalAlpha = isDark ? 0.12 : 0.15;
                         ctx.fill();
+                        ctx.globalAlpha = 1.0;
                     }
                 });
             }
@@ -543,9 +514,11 @@
                         ctx.stroke();
                         ctx.setLineDash([]); // reset
                         
-                        ctx.fillStyle = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
+                        ctx.fillStyle = textColor;
+                        ctx.globalAlpha = 0.3;
                         ctx.font = '9px monospace';
                         ctx.fillText(axis.label, p2.x + 5, p2.y + 3);
+                        ctx.globalAlpha = 1.0;
                     }
                 });
             });

@@ -50,8 +50,8 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            max-width: 320px;
-            width: calc(35% - 20px);
+            max-width: 240px;
+            width: calc(25% - 20px);
             background: var(--panel-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -151,20 +151,69 @@
         });
         window.parent.postMessage({ requestTheme: true }, '*');
 
+        let lastW = 0;
+        let lastH = 0;
+
         function resize() {
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
+            const w = rect.width;
+            const h = rect.height;
+
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            canvas.style.width = `${w}px`;
+            canvas.style.height = `${h}px`;
             ctx.scale(dpr, dpr);
+            
+            const clearSpace = w > 600 ? 240 : 0;
+            
+            if (lastW === 0 && lastH === 0) {
+                // First resize/init: place points proportionally in the clear space
+                const drawW = w - clearSpace;
+                const centerX = clearSpace + drawW / 2;
+                const centerY = h / 2;
+                const r = Math.min(drawW, h) * 0.3;
+                
+                points[0].x = centerX - r * 0.6; points[0].y = centerY - r * 0.8;
+                points[1].x = centerX + r * 0.6; points[1].y = centerY - r * 0.9;
+                points[2].x = centerX + r * 0.9; points[2].y = centerY;
+                points[3].x = centerX + r * 0.5; points[3].y = centerY + r * 0.8;
+                points[4].x = centerX - r * 0.7; points[4].y = centerY + r * 0.6;
+                points[5].x = centerX - r * 0.1; points[5].y = centerY + r * 0.1;
+                target.x = centerX + r * 0.1; target.y = centerY - r * 0.1;
+            } else {
+                // Subsequent resizes: scale the points to fit the new dimensions
+                const oldClearSpace = lastW > 600 ? 240 : 0;
+                const oldDrawW = lastW - oldClearSpace;
+                const newDrawW = w - clearSpace;
+                
+                const scaleX = (x) => {
+                    const relativeX = (x - oldClearSpace) / (oldDrawW || 1);
+                    return clearSpace + relativeX * newDrawW;
+                };
+                const scaleY = (y) => {
+                    return (y / (lastH || 1)) * h;
+                };
+                
+                points.forEach(p => {
+                    p.x = scaleX(p.x);
+                    p.y = scaleY(p.y);
+                });
+                target.x = scaleX(target.x);
+                target.y = scaleY(target.y);
+            }
+            
+            lastW = w;
+            lastH = h;
             
             // Adjust points if too far off screen
             points.forEach(p => {
-                p.x = Math.max(50, Math.min(rect.width - 50, p.x));
-                p.y = Math.max(50, Math.min(rect.height - 50, p.y));
+                p.x = Math.max(clearSpace + 20, Math.min(w - 20, p.x));
+                p.y = Math.max(20, Math.min(h - 20, p.y));
             });
-            target.x = Math.max(50, Math.min(rect.width - 50, target.x));
-            target.y = Math.max(50, Math.min(rect.height - 50, target.y));
+            target.x = Math.max(clearSpace + 20, Math.min(w - 20, target.x));
+            target.y = Math.max(20, Math.min(h - 20, target.y));
             
             draw();
         }
@@ -433,15 +482,6 @@
         });
 
         // Init
-        points[0].x = 220; points[0].y = 120;
-        points[1].x = 380; points[1].y = 100;
-        points[2].x = 460; points[2].y = 200;
-        points[3].x = 420; points[3].y = 350;
-        points[4].x = 200; points[4].y = 320;
-        points[5].x = 280; points[5].y = 230;
-        
-        target.x = 310; target.y = 210;
-
         resize();
     </script>
 </body>
