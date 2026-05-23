@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commutator Supremum Distributivity Concept Animation</title>
+    <style>
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a24;
+            --text-secondary: #495057;
+            --border-color: #e9ecef;
+            --accent-color: #4c6ef5;
+            
+            --color-h: #4c6ef5;       /* Blue for H */
+            --color-k: #12b886;       /* Emerald for K */
+            --color-join: #7048e8;    /* Purple for H ⊔ K */
+            --color-n: #f76707;       /* Orange for N */
+            --color-comm-h: rgba(76, 110, 245, 0.15);
+            --color-comm-k: rgba(18, 184, 134, 0.15);
+            --color-comm-join: rgba(112, 72, 232, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0b0c10;
+            --bg-card: #12131a;
+            --text-primary: #f8f9fa;
+            --text-secondary: #ced4da;
+            --border-color: #242731;
+            --accent-color: #5c7cfa;
+            
+            --color-h: #5c7cfa;
+            --color-k: #20c997;
+            --color-join: #845ef7;
+            --color-n: #ff922b;
+            --color-comm-h: rgba(92, 124, 250, 0.15);
+            --color-comm-k: rgba(32, 201, 151, 0.15);
+            --color-comm-join: rgba(132, 94, 247, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .controls {
+                width: 100% !important;
+                height: 200px;
+            }
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            width: 320px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+
+        .word-display-box {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .element-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .element-badge.h { background-color: var(--color-h); }
+        .element-badge.k { background-color: var(--color-k); }
+        .element-badge.inv { filter: brightness(0.85); border: 1px dashed rgba(255,255,255,0.5); }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        button {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            border-color: var(--accent-color);
+            background-color: var(--border-color);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-action {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .btn-action:hover:not(:disabled) {
+            background: var(--accent-color);
+            filter: brightness(0.9);
+        }
+
+        .step-panel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 120px;
+        }
+
+        .step-math {
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            color: var(--accent-color);
+            padding: 6px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .step-desc {
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .step-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .legend-dot.h { background-color: var(--color-h); }
+        .legend-dot.k { background-color: var(--color-k); }
+        .legend-dot.n { background-color: var(--color-n); }
+        .legend-dot.join { border: 2px dashed var(--color-join); width: 8px; height: 8px; }
+
+        .info-tip {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="title">Interactive Distributivity: ⁅H ⊔ K, N⁆ = ⁅H, N⁆ ⊔ ⁅K, N⁆</div>
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-dot h"></span>
+                <span>H</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot k"></span>
+                <span>K</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot join"></span>
+                <span>H ⊔ K (Join)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot n"></span>
+                <span>N (Normal)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="animationCanvas"></canvas>
+            <div class="info-tip">Build a word $w$ from elements of $H$ and $K$, then watch $\⁅w, n⁆$ decompose.</div>
+        </div>
+
+        <div class="controls">
+            <div class="section-title">1. Build Word w ∈ H ⊔ K</div>
+            <div class="word-display-box" id="wordDisplay">
+                <span style="color: var(--text-muted); font-style: italic;">Empty word (identity)</span>
+            </div>
+            <div class="btn-grid">
+                <button onclick="addElement('h')">+ Element h</button>
+                <button onclick="addElement('k')">+ Element k</button>
+                <button onclick="addElement('h_inv')">+ Element h⁻¹</button>
+                <button onclick="addElement('k_inv')">+ Element k⁻¹</button>
+            </div>
+            <button onclick="clearWord()" style="width: 100%;">Clear Word</button>
+
+            <div class="section-title">2. Select n ∈ N</div>
+            <div style="display: flex; gap: 8px;">
+                <button id="n-btn-n1" onclick="selectN('n₁')" style="flex: 1;" class="btn-action">n₁</button>
+                <button id="n-btn-n2" onclick="selectN('n₂')" style="flex: 1;">n₂</button>
+                <button id="n-btn-n3" onclick="selectN('n₃')" style="flex: 1;">n₃</button>
+            </div>
+
+            <div class="section-title">3. Decomposition Animation</div>
+            <button id="btnAnimate" class="btn-action" onclick="startDecomposition()" style="width: 100%;" disabled>
+                Decompose ⁅w, n⁆
+            </button>
+
+            <div class="step-panel" id="stepPanel" style="display: none;">
+                <div class="step-math" id="stepMath">⁅w, n⁆</div>
+                <div class="step-desc" id="stepDesc">Explanation goes here.</div>
+                <div class="step-nav">
+                    <button id="btnPrev" onclick="prevStep()">&larr; Back</button>
+                    <span id="stepCounter" style="align-self: center; font-weight: 500;">Step 1/1</span>
+                    <button id="btnNext" class="btn-action" onclick="nextStep()">Next &rarr;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = 0;
+        let height = 0;
+        
+        // Setup coordinate regions
+        let centerH = { x: 0, y: 0 };
+        let centerK = { x: 0, y: 0 };
+        let centerN = { x: 0, y: 0 };
+        let radiusGroup = 70;
+        
+        let word = [];
+        let selectedN = 'n₁';
+        
+        // Animation states
+        let animating = false;
+        let animationSteps = [];
+        let currentStepIndex = 0;
+        
+        // Interactive Elements for Canvas
+        let particles = [];
+        
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            const dpr = window.devicePixelRatio || 1;
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Recalculate group bubble coordinates based on container size
+            centerH = { x: width * 0.28, y: height * 0.35 };
+            centerK = { x: width * 0.52, y: height * 0.35 };
+            centerN = { x: width * 0.40, y: height * 0.72 };
+            radiusGroup = Math.min(width, height) * 0.16;
+            
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('DOMContentLoaded', () => {
+            resize();
+            window.parent.postMessage({ requestTheme: true }, '*');
+        });
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+
+        // 1. Word Builder Logic
+        function addElement(type) {
+            if (animating) return;
+            if (word.length >= 6) return; // Cap length for clear visual
+            
+            let label = '';
+            let val = '';
+            let index = word.length + 1;
+            
+            if (type === 'h') { label = `h${index}`; val = `h${index}`; }
+            else if (type === 'k') { label = `k${index}`; val = `k${index}`; }
+            else if (type === 'h_inv') { label = `h${index}⁻¹`; val = `h${index}-inv`; }
+            else if (type === 'k_inv') { label = `k${index}⁻¹`; val = `k${index}-inv`; }
+            
+            word.push({ type: type.includes('h') ? 'h' : 'k', label: label, value: val });
+            updateWordDisplay();
+        }
+
+        function clearWord() {
+            if (animating) stopAnimation();
+            word = [];
+            updateWordDisplay();
+        }
+
+        function updateWordDisplay() {
+            const display = document.getElementById('wordDisplay');
+            const btnAnimate = document.getElementById('btnAnimate');
+            
+            if (word.length === 0) {
+                display.innerHTML = '<span style="color: var(--text-muted); font-style: italic;">Empty word (identity)</span>';
+                btnAnimate.disabled = true;
+            } else {
+                display.innerHTML = '';
+                word.forEach(el => {
+                    const badge = document.createElement('span');
+                    badge.className = `element-badge ${el.type} ${el.value.includes('inv') ? 'inv' : ''}`;
+                    badge.innerText = el.label;
+                    display.appendChild(badge);
+                });
+                btnAnimate.disabled = false;
+            }
+            resetParticles();
+            draw();
+        }
+
+        function selectN(nVal) {
+            selectedN = nVal;
+            ['n1', 'n2', 'n3'].forEach(id => {
+                const btn = document.getElementById(`n-btn-${id}`);
+                if (btn) {
+                    if (id === nVal.replace('₁', '1').replace('₂', '2').replace('₃', '3')) {
+                        btn.classList.add('btn-action');
+                    } else {
+                        btn.classList.remove('btn-action');
+                    }
+                }
+            });
+            resetParticles();
+            draw();
+        }
+
+        // 2. Mathematical Decomposition Steps Engine
+        // Recursively decompose a commutator of a product [xy, z] = x[y, z]x^-1 * [x, z]
+        function generateDecompositionSteps(w, n) {
+            let steps = [];
+            
+            // Full equation formatting
+            function formatWord(wArr) {
+                if (wArr.length === 0) return 'e';
+                return wArr.map(x => x.label).join('');
+            }
+            
+            function formatComm(wStr, nStr) {
+                return `⁅${wStr}, ${nStr}⁆`;
+            }
+            
+            // Decompose recursively
+            function recurse(wList, currentN) {
+                if (wList.length === 1) {
+                    const el = wList[0];
+                    const isH = el.type === 'h';
+                    const targetSub = isH ? '⁅H, N⁆' : '⁅K, N⁆';
+                    steps.push({
+                        math: formatComm(el.label, currentN),
+                        desc: `Since ${el.label} ∈ ${el.type.toUpperCase()} and ${currentN} ∈ N, this is a basic commutator in the generator subgroup ${targetSub}.`,
+                        elements: [
+                            { name: el.label, group: el.type, isComm: false },
+                            { name: currentN, group: 'n', isComm: false }
+                        ],
+                        action: 'basic',
+                        resultGroup: el.type
+                    });
+                    return { math: formatComm(el.label, currentN), isBasic: true, label: formatComm(el.label, currentN), group: el.type };
+                }
+                
+                // Split word: x = first element, y = remaining elements
+                const x = wList[0];
+                const y = wList.slice(1);
+                
+                const xStr = x.label;
+                const yStr = formatWord(y);
+                const xyStr = formatWord(wList);
+                
+                // Formula: [xy, z] = x [y, z] x^-1 * [x, z]
+                // Step for this splitting level
+                steps.push({
+                    math: `⁅${xyStr}, ${currentN}⁆ = ${xStr} ⁅${yStr}, ${currentN}⁆ ${xStr}⁻¹ · ⁅${xStr}, ${currentN}⁆`,
+                    desc: `Apply the product commutator identity: ⁅ab, c⁆ = a ⁅b, c⁆ a⁻¹ · ⁅a, c⁆, splitting the first element ${xStr} from the remainder.`,
+                    elements: [
+                        { name: xStr, group: x.type, isComm: false },
+                        { name: `⁅${yStr}, ${currentN}⁆`, group: 'comm', isComm: true },
+                        { name: `⁅${xStr}, ${currentN}⁆`, group: 'comm', isComm: true }
+                    ],
+                    action: 'split'
+                });
+                
+                // Recurse on parts
+                const rightPart = recurse([x], currentN);
+                const leftPart = recurse(y, currentN);
+                
+                // Summarize conjugation normality step
+                const conjTerm = `${xStr} ${leftPart.math} ${xStr}⁻¹`;
+                steps.push({
+                    math: `${conjTerm} ∈ ⁅H, N⁆ ⊔ ⁅K, N⁆`,
+                    desc: `Normality of the Commutator Join: Since ${leftPart.math} lies in the join of commutators, its conjugate by ${xStr} (an element of the join's normalizer) also lies in ⁅H, N⁆ ⊔ ⁅K, N⁆.`,
+                    elements: [
+                        { name: xStr, group: x.type, isComm: false },
+                        { name: leftPart.math, group: 'comm', isComm: true }
+                    ],
+                    action: 'conjugate',
+                    resultGroup: 'join'
+                });
+                
+                return { math: `(${conjTerm} · ${rightPart.math})`, isBasic: false, group: 'join' };
+            }
+            
+            // Run recursion
+            recurse(w, n);
+            
+            // Final summary step
+            const finalMath = `⁅${formatWord(w)}, ${n}⁆ ∈ ⁅H, N⁆ ⊔ ⁅K, N⁆`;
+            steps.push({
+                math: finalMath,
+                desc: `Conclusion: Every term in the product decomposition lies in ⁅H, N⁆ ⊔ ⁅K, N⁆. Therefore, the entire commutator lies in the join of the individual commutators, completing the proof!`,
+                elements: [],
+                action: 'final'
+            });
+            
+            return steps;
+        }
+
+        function startDecomposition() {
+            if (word.length === 0) return;
+            animating = true;
+            document.getElementById('stepPanel').style.display = 'flex';
+            document.getElementById('btnAnimate').disabled = true;
+            
+            animationSteps = generateDecompositionSteps(word, selectedN);
+            currentStepIndex = 0;
+            showStep(0);
+        }
+
+        function stopAnimation() {
+            animating = false;
+            document.getElementById('stepPanel').style.display = 'none';
+            document.getElementById('btnAnimate').disabled = false;
+            resetParticles();
+            draw();
+        }
+
+        function showStep(index) {
+            currentStepIndex = index;
+            const step = animationSteps[index];
+            
+            document.getElementById('stepMath').innerText = step.math;
+            document.getElementById('stepDesc').innerText = step.desc;
+            document.getElementById('stepCounter').innerText = `Step ${index + 1}/${animationSteps.length}`;
+            
+            document.getElementById('btnPrev').disabled = index === 0;
+            document.getElementById('btnNext').innerText = index === animationSteps.length - 1 ? 'Finish' : 'Next \u2192';
+            
+            triggerStepVisuals(step);
+        }
+
+        function nextStep() {
+            if (currentStepIndex < animationSteps.length - 1) {
+                showStep(currentStepIndex + 1);
+            } else {
+                stopAnimation();
+            }
+        }
+
+        function prevStep() {
+            if (currentStepIndex > 0) {
+                showStep(currentStepIndex - 1);
+            }
+        }
+
+        // 3. Particle System and Animation Visuals
+        class Particle {
+            constructor(label, group, x, y) {
+                this.label = label;
+                this.group = group; // 'h', 'k', 'n', 'comm_h', 'comm_k', 'comm_join'
+                this.x = x;
+                this.y = y;
+                this.targetX = x;
+                this.targetY = y;
+                this.size = 14;
+                this.color = '';
+                this.pulse = 0;
+                this.opacity = 1;
+                this.isConj = false;
+                this.conjAngle = 0;
+                
+                this.updateColor();
+            }
+            
+            updateColor() {
+                const styles = getComputedStyle(document.documentElement);
+                if (this.group === 'h') this.color = styles.getPropertyValue('--color-h').trim();
+                else if (this.group === 'k') this.color = styles.getPropertyValue('--color-k').trim();
+                else if (this.group === 'n') this.color = styles.getPropertyValue('--color-n').trim();
+                else if (this.group === 'comm_h') this.color = 'rgba(76, 110, 245, 0.9)';
+                else if (this.group === 'comm_k') this.color = 'rgba(18, 184, 134, 0.9)';
+                else if (this.group === 'comm_join') this.color = styles.getPropertyValue('--color-join').trim();
+            }
+            
+            update() {
+                this.x += (this.targetX - this.x) * 0.1;
+                this.y += (this.targetY - this.y) * 0.1;
+                this.pulse += 0.05;
+                
+                if (this.isConj) {
+                    this.conjAngle += 0.08;
+                }
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                
+                ctx.shadowBlur = 6 + Math.sin(this.pulse) * 2;
+                ctx.shadowColor = this.color;
+                
+                if (this.isConj) {
+                    ctx.beginPath();
+                    ctx.arc(this.targetX, this.targetY, 20, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(132, 94, 247, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.label, this.x, this.y);
+                
+                ctx.restore();
+            }
+        }
+
+        function resetParticles() {
+            particles = [];
+            
+            for (let i = 0; i < 4; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radiusGroup * 0.6;
+                particles.push(new Particle(
+                    `h_val`, 'h', 
+                    centerH.x + Math.cos(angle) * r, 
+                    centerH.y + Math.sin(angle) * r
+                ));
+            }
+            for (let i = 0; i < 4; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radiusGroup * 0.6;
+                particles.push(new Particle(
+                    `k_val`, 'k', 
+                    centerK.x + Math.cos(angle) * r, 
+                    centerK.y + Math.sin(angle) * r
+                ));
+            }
+            for (let i = 0; i < 3; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radiusGroup * 0.6;
+                particles.push(new Particle(
+                    `n_val`, 'n', 
+                    centerN.x + Math.cos(angle) * r, 
+                    centerN.y + Math.sin(angle) * r
+                ));
+            }
+            
+            word.forEach((el, idx) => {
+                const center = el.type === 'h' ? centerH : centerK;
+                const offset = (idx - (word.length - 1) / 2) * 20;
+                particles.push(new Particle(
+                    el.label, el.type,
+                    center.x + offset, center.y - 10
+                ));
+            });
+            
+            particles.push(new Particle(
+                selectedN, 'n',
+                centerN.x, centerN.y - 10
+            ));
+        }
+
+        function triggerStepVisuals(step) {
+            particles.forEach(p => p.opacity = 0.3);
+            
+            if (step.action === 'basic') {
+                const e1 = step.elements[0].name;
+                const e2 = step.elements[1].name;
+                
+                const p1 = particles.find(p => p.label === e1);
+                const p2 = particles.find(p => p.label === e2);
+                
+                if (p1 && p2) {
+                    p1.opacity = 1.0;
+                    p2.opacity = 1.0;
+                    
+                    const midX = (centerH.x + centerK.x) / 2;
+                    const midY = (centerH.y + centerN.y) / 2;
+                    
+                    p1.targetX = midX - 15;
+                    p1.targetY = midY;
+                    p2.targetX = midX + 15;
+                    p2.targetY = midY;
+                    
+                    const groupType = step.resultGroup === 'h' ? 'comm_h' : 'comm_k';
+                    setTimeout(() => {
+                        const commLabel = `⁅${e1},${e2}⁆`;
+                        if (!particles.some(p => p.label === commLabel)) {
+                            const commPart = new Particle(commLabel, groupType, midX, midY);
+                            commPart.targetX = step.resultGroup === 'h' ? centerH.x : centerK.x;
+                            commPart.targetY = (step.resultGroup === 'h' ? centerH.y : centerK.y) + 30;
+                            particles.push(commPart);
+                            draw();
+                        }
+                    }, 500);
+                }
+            } else if (step.action === 'split') {
+                const xStr = step.elements[0].name;
+                const px = particles.find(p => p.label === xStr);
+                if (px) px.opacity = 1.0;
+            } else if (step.action === 'conjugate') {
+                const xStr = step.elements[0].name;
+                const commStr = step.elements[1].name;
+                
+                const px = particles.find(p => p.label === xStr);
+                const pComm = particles.find(p => p.label.replace(/\s+/g, '') === commStr.replace(/\s+/g, ''));
+                
+                if (pComm) {
+                    pComm.opacity = 1.0;
+                    pComm.isConj = true;
+                    const orbitX = (centerH.x + centerK.x) / 2;
+                    const orbitY = (centerH.y + centerK.y) / 2;
+                    pComm.targetX = orbitX;
+                    pComm.targetY = orbitY;
+                }
+                if (px) px.opacity = 1.0;
+            } else if (step.action === 'final') {
+                particles.forEach(p => {
+                    if (p.group.startsWith('comm_')) {
+                        p.opacity = 1.0;
+                        p.targetX = (centerH.x + centerK.x) / 2;
+                        p.targetY = (centerH.y + centerN.y) / 2 + 10;
+                    }
+                });
+            }
+        }
+
+        function draw() {
+            particles.forEach(p => p.update());
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const styles = getComputedStyle(document.documentElement);
+            const colorH = styles.getPropertyValue('--color-h').trim();
+            const colorK = styles.getPropertyValue('--color-k').trim();
+            const colorJoin = styles.getPropertyValue('--color-join').trim();
+            const colorN = styles.getPropertyValue('--color-n').trim();
+            
+            ctx.save();
+            ctx.strokeStyle = colorJoin;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 6]);
+            
+            const padding = radiusGroup + 16;
+            ctx.beginPath();
+            ctx.arc(centerH.x, centerH.y, padding, Math.PI / 2, Math.PI * 1.5);
+            ctx.arc(centerK.x, centerK.y, padding, Math.PI * 1.5, Math.PI / 2);
+            ctx.closePath();
+            ctx.stroke();
+            
+            ctx.fillStyle = styles.getPropertyValue('--color-comm-join').trim();
+            ctx.fill();
+            
+            ctx.fillStyle = colorJoin;
+            ctx.font = 'bold 12px var(--font-sans)';
+            ctx.fillText('H ⊔ K (Join Subgroup)', centerH.x - 20, centerH.y - padding - 8);
+            ctx.restore();
+            
+            ctx.save();
+            ctx.strokeStyle = colorH;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(centerH.x, centerH.y, radiusGroup, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = styles.getPropertyValue('--color-comm-h').trim();
+            ctx.fill();
+            
+            ctx.fillStyle = colorH;
+            ctx.font = 'bold 11px var(--font-sans)';
+            ctx.fillText('Subgroup H', centerH.x - radiusGroup + 10, centerH.y - radiusGroup + 15);
+            ctx.restore();
+            
+            ctx.save();
+            ctx.strokeStyle = colorK;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(centerK.x, centerK.y, radiusGroup, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = styles.getPropertyValue('--color-comm-k').trim();
+            ctx.fill();
+            
+            ctx.fillStyle = colorK;
+            ctx.font = 'bold 11px var(--font-sans)';
+            ctx.fillText('Subgroup K', centerK.x + 10, centerK.y - radiusGroup + 15);
+            ctx.restore();
+            
+            ctx.save();
+            ctx.strokeStyle = colorN;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(centerN.x, centerN.y, radiusGroup, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(247, 103, 7, 0.05)';
+            ctx.fill();
+            
+            ctx.fillStyle = colorN;
+            ctx.font = 'bold 11px var(--font-sans)';
+            ctx.fillText('Subgroup N', centerN.x - radiusGroup + 12, centerN.y - radiusGroup + 15);
+            ctx.restore();
+            
+            ctx.save();
+            ctx.strokeStyle = colorJoin;
+            ctx.lineWidth = 1.5;
+            const targetX = (centerH.x + centerK.x) / 2;
+            const targetY = (centerH.y + centerN.y) / 2 + 10;
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, radiusGroup * 0.8, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(112, 72, 232, 0.08)';
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = colorJoin;
+            ctx.font = 'bold 11px var(--font-sans)';
+            ctx.textAlign = 'center';
+            ctx.fillText('⁅H, N⁆ ⊔ ⁅K, N⁆', targetX, targetY - radiusGroup * 0.8 + 14);
+            ctx.restore();
+            
+            particles.forEach(p => {
+                p.updateColor();
+                p.draw(ctx);
+            });
+            
+            let particlesMoving = particles.some(p => Math.abs(p.x - p.targetX) > 0.5 || Math.abs(p.y - p.targetY) > 0.5);
+            if (animating || particlesMoving) {
+                requestAnimationFrame(draw);
+            }
+        }
+        
+        updateWordDisplay();
+    </script>
+</body>
+</html>
