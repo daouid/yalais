@@ -34,10 +34,10 @@
         <header class="detail-header">
             <h1 class="detail-title">Oppenheim Inequality</h1>
             <div class="detail-meta">
-                <span class="badge-tag">Algebra</span>
-                <span class="badge-tag">Matrix Theory</span>
-                <span class="badge-tag">Inequalities</span>
-                <span>File: <code>repl/proven/Oppenheim.lean</code></span>
+                <span class="badge-tag algebra">Algebra</span>
+                <span class="badge-tag purple">Matrix Theory</span>
+                <span class="badge-tag red">Inequalities</span>
+                <span>File: <code class="code-ref">repl/proven/Oppenheim.lean</code></span>
             </div>
         </header>
 
@@ -70,15 +70,15 @@
         <div class="content-row">
             <!-- Mathematical Exposition -->
             <section class="exposition-panel">
-                <h2>Mathematical Exposition</h2>
+                <h2>Mathematical <span class="text-algebra">Exposition</span></h2>
                 <p>The <strong>Oppenheim Inequality</strong> provides a fundamental lower bound on the determinant of the Hadamard (entrywise) product $A \odot B$ of two positive semidefinite matrices $A, B \in \mathbb{R}^{n \times n}$:</p>
                 $$ \det(A) \prod_{i=1}^n B_{ii} \le \det(A \odot B) $$
-                <p>Where $B_{ii}$ are the diagonal entries of $B$. If we choose $B = I$ (the identity matrix), Oppenheim's inequality simplifies to $\det(A) \le \prod_{i=1}^n A_{ii}$, which is the classical <strong>Hadamard Determinant Inequality</strong>. Thus, Oppenheim's theorem is a substantial generalization of Hadamard's bound.</p>
+                <p>Where $B_{ii}$ are the diagonal entries of $B$. If we choose $B = I$ (the identity matrix), Oppenheim's inequality simplifies to $\det(A) \le \prod_{i=1}^n A_{ii}$, which is the classical <strong class="text-red">Hadamard Determinant Inequality</strong>. Thus, Oppenheim's theorem is a substantial generalization of Hadamard's bound.</p>
                 
-                <h3>Inductive Proof Strategy</h3>
+                <h3>Inductive Proof <span class="text-purple">Strategy</span></h3>
                 <p>The formal proof uses induction on the dimension $n$ of the matrices. To transition from $n-1$ to $n$, the positive semidefinite matrices are partitioned into block form:</p>
                 $$ A = \begin{pmatrix} X & u \\ u^T & d_A \end{pmatrix}, \quad B = \begin{pmatrix} Y & v \\ v^T & d_B \end{pmatrix} $$
-                <p>where $X, Y \in \mathbb{R}^{(n-1) \times (n-1)}$ are symmetric submatrices, $u, v \in \mathbb{R}^{n-1}$ are column vectors, and $d_A, d_B \in \mathbb{R}$ are scalars. Using the Schur complement representation, the determinant of $A$ satisfies:</p>
+                <p>where $X, Y \in \mathbb{R}^{(n-1) \times (n-1)}$ are symmetric submatrices, $u, v \in \mathbb{R}^{n-1}$ are column vectors, and $d_A, d_B \in \mathbb{R}$ are scalars. Using the <strong class="text-combinatorics">Schur complement</strong> representation, the determinant of $A$ satisfies:</p>
                 $$ \det(A) = \det(X) (d_A - u^T X^{-1} u) $$
                 <p>For the Hadamard product, the block representation is:</p>
                 $$ A \odot B = \begin{pmatrix} X \odot Y & u \odot v \\ (u \odot v)^T & d_A d_B \end{pmatrix} $$

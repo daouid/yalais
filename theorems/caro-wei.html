@@ -34,10 +34,10 @@
         <header class="detail-header">
             <h1 class="detail-title">Caro–Wei Theorem</h1>
             <div class="detail-meta">
-                <span class="badge-tag">Combinatorics</span>
-                <span class="badge-tag">Graph Theory</span>
-                <span class="badge-tag">Probabilistic Method</span>
-                <span>File: <code>repl/proven/caro_wei.lean</code></span>
+                <span class="badge-tag combinatorics">Combinatorics</span>
+                <span class="badge-tag topology">Graph Theory</span>
+                <span class="badge-tag red">Probabilistic Method</span>
+                <span>File: <code class="code-ref">repl/proven/caro_wei.lean</code></span>
             </div>
         </header>
 
@@ -70,18 +70,18 @@
         <div class="content-row">
             <!-- Mathematical Exposition -->
             <section class="exposition-panel">
-                <h2>Mathematical Exposition</h2>
+                <h2>Mathematical <span class="text-combinatorics">Exposition</span></h2>
                 <p>The <strong>Caro–Wei Theorem</strong> provides a fundamental lower bound on the independence number $\alpha(G)$ of a simple graph $G = (V, E)$ in terms of the degrees of its vertices:</p>
                 $$ \sum_{v \in V} \frac{1}{d(v) + 1} \le \alpha(G) $$
-                <p>Where $d(v)$ is the degree of vertex $v$. This bound is tight for unions of complete graphs. The theorem is a generalization of Turán's Theorem and is a classic showcase of the <strong>probabilistic method</strong> in combinatorics.</p>
+                <p>Where $d(v)$ is the degree of vertex $v$. This bound is tight for unions of complete graphs. The theorem is a generalization of Turán's Theorem and is a classic showcase of the <strong class="text-red">probabilistic method</strong> in combinatorics.</p>
                 
-                <h3>Proof Strategy</h3>
+                <h3>Proof <span class="text-combinatorics">Strategy</span></h3>
                 <p>The proof relies on averaging over random vertex orderings. Let $\pi: V \to \{1, 2, \dots, |V|\}$ be a uniformly chosen random permutation of the vertices. We select vertices that appear before all of their neighbors:</p>
                 $$ S = \{ v \in V \mid \forall w \in N(v), \pi(v) < \pi(w) \} $$
                 <p>We prove two key facts:</p>
                 <ol style="margin-left: 20px; margin-bottom: 16px; font-size: 15px; color: var(--text-secondary);">
-                    <li><strong>$S$ is an independent set:</strong> Adjacent vertices cannot both be local minima (one must be smaller).</li>
-                    <li><strong>Expected size of $S$:</strong> The probability that $v$ has the smallest value in its closed neighborhood is $1 / (d(v) + 1)$. By linearity, $E[|S|] = \sum_{v \in V} \frac{1}{d(v)+1}$.</li>
+                    <li><strong class="text-topology">$S$ is an independent set:</strong> Adjacent vertices cannot both be local minima (one must be smaller).</li>
+                    <li><strong class="text-combinatorics">Expected size of $S$:</strong> The probability that $v$ has the smallest value in its closed neighborhood is $1 / (d(v) + 1)$. By linearity, $E[|S|] = \sum_{v \in V} \frac{1}{d(v)+1}$.</li>
                 </ol>
                 <p>Since any independent set has size at most $\alpha(G)$, the expected size satisfies $E[|S|] \le \alpha(G)$, completing the proof.</p>
             </section>
