@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oppenheim Inequality Concept Animation</title>
+    <style>
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a24;
+            --text-secondary: #495057;
+            --border-color: #e9ecef;
+            --accent-color: #4c6ef5;
+            --color-a: #4c6ef5;
+            --color-b: #0ca678;
+            --color-ab: #e8590c;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0b0c10;
+            --bg-card: #12131a;
+            --text-primary: #f8f9fa;
+            --text-secondary: #ced4da;
+            --border-color: #242731;
+            --accent-color: #5c7cfa;
+            --color-a: #5c7cfa;
+            --color-b: #20c997;
+            --color-ab: #ff922b;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            width: 260px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 0;
+        }
+
+        .value-display {
+            font-family: monospace;
+            font-weight: normal;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 4px 0;
+        }
+
+        .math-display {
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .math-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .math-row.highlight {
+            font-weight: bold;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 6px;
+            margin-top: 4px;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        /* Tooltip style */
+        .tooltip {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-a);"></span>
+            <span>Matrix A (Ellipse)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-b);"></span>
+            <span>Matrix B (Ellipse)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-ab);"></span>
+            <span>A ⊙ B (Hadamard Ellipse)</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="animationCanvas"></canvas>
+            <div class="tooltip">Drag grid to pan. Ellipses represent the quadratic forms: xᵀ M⁻¹ x = 1.</div>
+        </div>
+
+        <div class="controls">
+            <div class="title">Matrix A Params</div>
+            <div class="control-group">
+                <label>A₁₁ (a) <span class="value-display" id="val-a">1.0</span></label>
+                <input type="range" id="slide-a" min="0.5" max="3" step="0.1" value="1.5">
+            </div>
+            <div class="control-group">
+                <label>A₂₂ (c) <span class="value-display" id="val-c">1.0</span></label>
+                <input type="range" id="slide-c" min="0.5" max="3" step="0.1" value="1.2">
+            </div>
+            <div class="control-group">
+                <label>A₁₂ (b) <span class="value-display" id="val-b">0.0</span></label>
+                <input type="range" id="slide-b" min="-1.5" max="1.5" step="0.05" value="0.4">
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="title">Matrix B Params</div>
+            <div class="control-group">
+                <label>B₁₁ (d) <span class="value-display" id="val-d">1.0</span></label>
+                <input type="range" id="slide-d" min="0.5" max="3" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>B₂₂ (f) <span class="value-display" id="val-f">1.0</span></label>
+                <input type="range" id="slide-f" min="0.5" max="3" step="0.1" value="1.5">
+            </div>
+            <div class="control-group">
+                <label>B₁₂ (e) <span class="value-display" id="val-e">0.0</span></label>
+                <input type="range" id="slide-e" min="-1.5" max="1.5" step="0.05" value="-0.3">
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="title">Oppenheim Check</div>
+            <div class="math-display">
+                <div class="math-row">
+                    <span>det(A)</span>
+                    <span class="value-display" id="det-a-val">0.00</span>
+                </div>
+                <div class="math-row">
+                    <span>B₁₁ · B₂₂</span>
+                    <span class="value-display" id="diag-b-val">0.00</span>
+                </div>
+                <div class="math-row">
+                    <span>det(A) · B₁₁ · B₂₂</span>
+                    <span class="value-display" id="lhs-val" style="color: var(--color-a);">0.00</span>
+                </div>
+                <div class="math-row">
+                    <span>det(A ⊙ B)</span>
+                    <span class="value-display" id="rhs-val" style="color: var(--color-ab);">0.00</span>
+                </div>
+                <div class="math-row highlight">
+                    <span>Ratio (RHS / LHS)</span>
+                    <span class="value-display" id="ratio-val" style="color: var(--accent-color);">1.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Setup Canvas
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width = 0;
+        let height = 0;
+        let scale = 80;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            // Set display size
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            // Set actual buffer size (high-DPI)
+            const dpr = window.devicePixelRatio || 1;
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('DOMContentLoaded', () => {
+            resize();
+            // Notify parent we are ready for theme
+            window.parent.postMessage({ requestTheme: true }, '*');
+        });
+
+        // Theme Listener
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+
+        // Matrix Parameter Variables
+        let a = 1.5, b = 0.4, c = 1.2;
+        let d = 1.0, e = -0.3, f = 1.5;
+
+        // Sliders
+        const slideA = document.getElementById('slide-a');
+        const slideB = document.getElementById('slide-b');
+        const slideC = document.getElementById('slide-c');
+        const slideD = document.getElementById('slide-d');
+        const slideE = document.getElementById('slide-e');
+        const slideF = document.getElementById('slide-f');
+
+        function updateInputs() {
+            a = parseFloat(slideA.value);
+            c = parseFloat(slideC.value);
+            
+            // Constrain b to preserve positive definiteness (b^2 < a*c)
+            const maxB = Math.sqrt(a * c) - 0.05;
+            slideB.min = -maxB.toFixed(2);
+            slideB.max = maxB.toFixed(2);
+            b = parseFloat(slideB.value);
+            if (Math.abs(b) >= maxB) {
+                b = Math.sign(b) * maxB;
+                slideB.value = b.toFixed(2);
+            }
+
+            d = parseFloat(slideD.value);
+            f = parseFloat(slideF.value);
+
+            // Constrain e to preserve positive definiteness (e^2 < d*f)
+            const maxE = Math.sqrt(d * f) - 0.05;
+            slideE.min = -maxE.toFixed(2);
+            slideE.max = maxE.toFixed(2);
+            e = parseFloat(slideE.value);
+            if (Math.abs(e) >= maxE) {
+                e = Math.sign(e) * maxE;
+                slideE.value = e.toFixed(2);
+            }
+
+            // Update DOM text
+            document.getElementById('val-a').innerText = a.toFixed(1);
+            document.getElementById('val-b').innerText = b.toFixed(2);
+            document.getElementById('val-c').innerText = c.toFixed(1);
+            document.getElementById('val-d').innerText = d.toFixed(1);
+            document.getElementById('val-e').innerText = e.toFixed(2);
+            document.getElementById('val-f').innerText = f.toFixed(1);
+
+            calculateMetrics();
+            draw();
+        }
+
+        [slideA, slideB, slideC, slideD, slideE, slideF].forEach(s => {
+            s.addEventListener('input', updateInputs);
+        });
+
+        function calculateMetrics() {
+            const detA = a * c - b * b;
+            const detB = d * f - e * e;
+            const diagB = d * f;
+            const lhs = detA * diagB;
+
+            // Hadamard product matrix elements
+            const h_a = a * d;
+            const h_b = b * e;
+            const h_c = c * f;
+            const detAB = h_a * h_c - h_b * h_b;
+
+            document.getElementById('det-a-val').innerText = detA.toFixed(4);
+            document.getElementById('diag-b-val').innerText = diagB.toFixed(4);
+            document.getElementById('lhs-val').innerText = lhs.toFixed(4);
+            document.getElementById('rhs-val').innerText = detAB.toFixed(4);
+            document.getElementById('ratio-val').innerText = (detAB / lhs).toFixed(4);
+        }
+
+        // Draw Ellipse defined by quadratic form x^T M^-1 x = 1
+        // For M = [A, B; B, C], the inverse M^-1 = 1/det * [C, -B; -B, A]
+        // Ellipse equation: C x^2 - 2 B x y + A y^2 = det(M)
+        function drawEllipse(matrixA, matrixB, matrixC, color, lineWidth) {
+            const det = matrixA * matrixC - matrixB * matrixB;
+            if (det <= 0) return;
+
+            // Eigenvalues of M
+            const trace = matrixA + matrixC;
+            const diff = matrixA - matrixC;
+            const disc = Math.sqrt(diff * diff + 4 * matrixB * matrixB);
+            const l1 = (trace + disc) / 2;
+            const l2 = (trace - disc) / 2;
+
+            // Semi-axes lengths are sqrt(l1) and sqrt(l2)
+            const rx = Math.sqrt(l1) * scale;
+            const ry = Math.sqrt(l2) * scale;
+
+            // Eigenvector angle for rotation
+            let angle = 0;
+            if (Math.abs(matrixB) < 1e-9) {
+                angle = matrixA < matrixC ? Math.PI / 2 : 0;
+            } else {
+                angle = Math.atan2(l1 - matrixA, matrixB);
+            }
+
+            ctx.save();
+            ctx.translate(width / 2 + offsetX, height / 2 + offsetY);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+            
+            // Add a very transparent fill
+            ctx.fillStyle = color.replace(')', ', 0.05)').replace('rgb', 'rgba');
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function drawGrid() {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1;
+
+            const startX = (offsetX % scale) - scale;
+            const startY = (offsetY % scale) - scale;
+
+            // Vertical lines
+            for (let x = startX; x < width; x += scale) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+
+            // Horizontal lines
+            for (let y = startY; y < height; y += scale) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            // Main axes
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#868e96';
+            ctx.lineWidth = 1.5;
+            
+            // Y Axis
+            ctx.beginPath();
+            ctx.moveTo(width / 2 + offsetX, 0);
+            ctx.lineTo(width / 2 + offsetX, height);
+            ctx.stroke();
+
+            // X Axis
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2 + offsetY);
+            ctx.lineTo(width, height / 2 + offsetY);
+            ctx.stroke();
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw coordinate grid
+            drawGrid();
+
+            const styles = getComputedStyle(document.documentElement);
+            const colorA = styles.getPropertyValue('--color-a').trim();
+            const colorB = styles.getPropertyValue('--color-b').trim();
+            const colorAB = styles.getPropertyValue('--color-ab').trim();
+
+            // Draw A Ellipse
+            drawEllipse(a, b, c, colorA, 2.5);
+
+            // Draw B Ellipse
+            drawEllipse(d, e, f, colorB, 2.5);
+
+            // Draw A ⊙ B Ellipse
+            drawEllipse(a * d, b * e, c * f, colorAB, 3.5);
+        }
+
+        // Dragging Logic
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX - offsetX;
+            startY = e.clientY - offsetY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            offsetX = e.clientX - startX;
+            offsetY = e.clientY - startY;
+            draw();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Initialize Metrics
+        updateInputs();
+    </script>
+</body>
+</html>
