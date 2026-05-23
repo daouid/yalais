@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Caro-Wei Theorem Animation</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --edge-default: #dee2e6;
+        }
+        [data-theme="dark"] {
+            --bg-color: #12131a;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #1b1d26;
+            --edge-default: #242731;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 240px;
+            width: calc(25% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        button {
+            flex: 1;
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button.sec {
+            background: var(--node-default);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Caro–Wei Live Model</div>
+        <div class="stat-line"><span>Vertices:</span><span class="stat-val">8</span></div>
+        <div class="stat-line"><span>Permutations:</span><span class="stat-val" id="count">0</span></div>
+        <div class="stat-line"><span>Current Minima (S):</span><span class="stat-val" id="current-size" style="color: var(--accent);">0</span></div>
+        <div class="stat-line"><span>Expected: ∑ 1/(d+1):</span><span class="stat-val" id="expected">2.43</span></div>
+        <div class="stat-line"><span>Running Avg |S|:</span><span class="stat-val" id="avg" style="color: var(--accent);">0.00</span></div>
+        <div class="btn-group">
+            <button id="btn-step" onclick="step()">Step</button>
+            <button id="btn-auto" class="sec" onclick="toggleAuto()">Auto</button>
+            <button id="btn-reset" class="sec" onclick="resetStats()">Reset</button>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let nodes = [];
+        let edges = [];
+        let permutations = 0;
+        let runningSum = 0;
+        let isAuto = false;
+        let autoInterval = null;
+        let lastPerm = [];
+
+        // 8-node cyclic-ish graph layout
+        const presetNodes = [
+            { x: 0.45, y: 0.25, d: 2 },
+            { x: 0.70, y: 0.20, d: 3 },
+            { x: 0.85, y: 0.45, d: 2 },
+            { x: 0.75, y: 0.75, d: 3 },
+            { x: 0.45, y: 0.80, d: 2 },
+            { x: 0.20, y: 0.70, d: 3 },
+            { x: 0.15, y: 0.45, d: 2 },
+            { x: 0.30, y: 0.20, d: 3 }
+        ];
+        
+        // Edge connections
+        const presetEdges = [
+            [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 0],
+            [1, 7], [3, 5] // extra diagonals to make degrees irregular (degrees: 3, 3, 2, 3, 2, 3, 2, 3)
+        ];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        // Request theme from parent on load
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        // Precompute expected value: ∑ 1/(d+1)
+        // degrees: node 0: 2 (edges: 0-1, 0-7)
+        // node 1: 3 (edges: 1-0, 1-2, 1-7)
+        // node 2: 2 (edges: 2-1, 2-3)
+        // node 3: 3 (edges: 3-2, 3-4, 3-5)
+        // node 4: 2 (edges: 4-3, 4-5)
+        // node 5: 3 (edges: 5-4, 5-6, 5-3)
+        // node 6: 2 (edges: 6-5, 6-7)
+        // node 7: 3 (edges: 7-6, 7-0, 7-1)
+        // degrees: 2, 3, 2, 3, 2, 3, 2, 3
+        // ∑ 1/(d+1) = 4*(1/3) + 4*(1/4) = 4/3 + 1 = 2.333
+        const expectedVal = 2.333;
+        document.getElementById('expected').textContent = expectedVal.toFixed(3);
+
+        function initGraph() {
+            nodes = presetNodes.map((n, index) => {
+                // count actual degree
+                const deg = presetEdges.filter(e => e.includes(index)).length;
+                return { ...n, val: index + 1, deg: deg, isMin: false };
+            });
+            edges = presetEdges.map(e => ({ from: e[0], to: e[1] }));
+            shufflePermutation();
+        }
+
+        function shufflePermutation() {
+            const arr = Array.from({ length: nodes.length }, (_, i) => i + 1);
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            lastPerm = arr;
+            nodes.forEach((n, idx) => {
+                n.val = arr[idx];
+            });
+            
+            // Determine local minima
+            let minCount = 0;
+            nodes.forEach((n, idx) => {
+                const neighbors = edges.filter(e => e.from === idx || e.to === idx)
+                                       .map(e => e.from === idx ? e.to : e.from);
+                n.isMin = neighbors.every(neighIdx => n.val < nodes[neighIdx].val);
+                if (n.isMin) minCount++;
+            });
+            
+            return minCount;
+        }
+
+        function step() {
+            const mins = shufflePermutation();
+            permutations++;
+            runningSum += mins;
+            
+            document.getElementById('count').textContent = permutations;
+            document.getElementById('current-size').textContent = mins;
+            document.getElementById('avg').textContent = (runningSum / permutations).toFixed(3);
+            draw();
+        }
+
+        function toggleAuto() {
+            isAuto = !isAuto;
+            const btn = document.getElementById('btn-auto');
+            if (isAuto) {
+                btn.textContent = "Pause";
+                btn.classList.remove('sec');
+                autoInterval = setInterval(step, 200);
+            } else {
+                btn.textContent = "Auto";
+                btn.classList.add('sec');
+                clearInterval(autoInterval);
+            }
+        }
+
+        function resetStats() {
+            permutations = 0;
+            runningSum = 0;
+            document.getElementById('count').textContent = 0;
+            document.getElementById('current-size').textContent = 0;
+            document.getElementById('avg').textContent = "0.000";
+            shufflePermutation();
+            draw();
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            // Get styling based on computed variables
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const edgeColor = styles.getPropertyValue('--edge-default').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            
+            // Helper to translate relative to absolute coordinates
+            // Shift coordinates to the right to leave 240px clear space on the left
+            const scaleX = (x) => {
+                const clearSpace = w > 600 ? 220 : 0;
+                return clearSpace + x * (w - clearSpace);
+            };
+            const scaleY = (y) => y * h;
+            
+            // Draw Edges
+            ctx.lineWidth = 2;
+            edges.forEach(e => {
+                const n1 = nodes[e.from];
+                const n2 = nodes[e.to];
+                ctx.beginPath();
+                ctx.moveTo(scaleX(n1.x), scaleY(n1.y));
+                ctx.lineTo(scaleX(n2.x), scaleY(n2.y));
+                
+                // If both nodes are min (should never happen), highlight edge.
+                // Otherwise draw normal edge.
+                ctx.strokeStyle = edgeColor;
+                ctx.stroke();
+            });
+
+            // Draw Nodes
+            nodes.forEach(n => {
+                const x = scaleX(n.x);
+                const y = scaleY(n.y);
+                const r = 22;
+                
+                // Draw Node Background
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, 2 * Math.PI);
+                
+                if (n.isMin) {
+                    ctx.fillStyle = accent;
+                    ctx.shadowColor = accent;
+                    ctx.shadowBlur = 15;
+                } else {
+                    ctx.fillStyle = nodeDefault;
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fill();
+                
+                // Draw Border
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = n.isMin ? accent : borderColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw Value Text
+                ctx.fillStyle = n.isMin ? "#ffffff" : textColor;
+                ctx.font = "bold 14px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(n.val, x, y - 2);
+
+                // Draw Degree Badge
+                ctx.fillStyle = n.isMin ? accent : textColor;
+                ctx.font = "9px monospace";
+                ctx.fillText(`d=${n.deg}`, x, y + 36);
+            });
+        }
+
+        // Initialize
+        initGraph();
+        resize();
+    </script>
+</body>
+</html>

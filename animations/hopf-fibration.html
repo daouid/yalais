@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hopf Fibration 3D Visualization</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.1);
+        }
+        [data-theme="dark"] {
+            --bg-color: #12131a;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.2);
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 240px;
+            width: calc(25% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .control-group {
+            margin-bottom: 8px;
+        }
+        label {
+            font-size: 10px;
+            display: block;
+            margin-bottom: 2px;
+            font-weight: 500;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 0;
+        }
+        .value-display {
+            font-size: 10px;
+            font-family: monospace;
+            float: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Hopf Fibration</div>
+        <div class="control-group">
+            <label>Torus Latitude (η): <span class="value-display" id="eta-val">0.78</span></label>
+            <input type="range" id="eta-slider" min="0.05" max="1.52" step="0.01" value="0.78">
+        </div>
+        <div class="control-group">
+            <label>Fibers Count: <span class="value-display" id="fibers-val">12</span></label>
+            <input type="range" id="fibers-slider" min="3" max="24" step="1" value="12">
+        </div>
+        <div class="control-group">
+            <label>Auto-Rotation: <span class="value-display" id="rot-val">On</span></label>
+            <input type="range" id="rot-slider" min="0" max="2" step="1" value="1">
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let eta = 0.78; // latitude parameter
+        let numFibers = 12;
+        let rotSpeed = 1; // 0 = off, 1 = normal, 2 = fast
+        
+        let angleX = 0.5;
+        let angleY = 0.5;
+        let isDragging = false;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        // Inputs
+        document.getElementById('eta-slider').addEventListener('input', (e) => {
+            eta = parseFloat(e.target.value);
+            document.getElementById('eta-val').textContent = eta.toFixed(2);
+        });
+        document.getElementById('fibers-slider').addEventListener('input', (e) => {
+            numFibers = parseInt(e.target.value);
+            document.getElementById('fibers-val').textContent = numFibers;
+        });
+        document.getElementById('rot-slider').addEventListener('input', (e) => {
+            rotSpeed = parseInt(e.target.value);
+            document.getElementById('rot-val').textContent = rotSpeed === 0 ? "Off" : rotSpeed === 1 ? "Slow" : "Fast";
+        });
+
+        // Resize
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Mouse Drag
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        });
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - prevMouseX;
+            const deltaY = e.clientY - prevMouseY;
+            angleY += deltaX * 0.005;
+            angleX += deltaY * 0.005;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        });
+
+        // 3D rotation helper
+        function rotate3D(x, y, z, ax, ay) {
+            // rotate Y
+            let cosY = Math.cos(ay), sinY = Math.sin(ay);
+            let x1 = x * cosY - z * sinY;
+            let z1 = x * sinY + z * cosY;
+            // rotate X
+            let cosX = Math.cos(ax), sinX = Math.sin(ax);
+            let y2 = y * cosX - z1 * sinX;
+            let z2 = y * sinX + z1 * cosX;
+            return { x: x1, y: y2, z: z2 };
+        }
+
+        // Generate fiber points (stereographic projection from S3 to R3)
+        function getFiberPoints(fiberIndex, totalFibers, etaParam) {
+            const points = [];
+            const phi = (fiberIndex / totalFibers) * 2 * Math.PI; // Fiber longitude on S2
+            const steps = 80;
+            
+            for (let i = 0; i <= steps; i++) {
+                const xi = (i / steps) * 2 * Math.PI; // Circle parameter
+                
+                // Point on S3 in R4
+                const x0 = Math.cos(etaParam) * Math.cos(xi);
+                const x1 = Math.cos(etaParam) * Math.sin(xi);
+                const x2 = Math.sin(etaParam) * Math.cos(xi + phi);
+                const x3 = Math.sin(etaParam) * Math.sin(xi + phi);
+                
+                // Stereographic projection to R3 from (0,0,0,1)
+                const denom = 1.0 - x3;
+                if (Math.abs(denom) < 0.0001) continue;
+                
+                const X = x0 / denom;
+                const Y = x1 / denom;
+                const Z = x2 / denom;
+                
+                points.push({ x: X, y: Y, z: Z });
+            }
+            return points;
+        }
+
+        function animate() {
+            if (isDragging) {
+                // drag overrides auto-rot
+            } else if (rotSpeed > 0) {
+                angleY += 0.003 * rotSpeed;
+                angleX += 0.001 * rotSpeed;
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            const centerX = (w > 600) ? 220 + (w - 220)/2 : w/2; // Offset center to the right
+            const centerY = h / 2;
+            const scale = Math.min(w, h) * 0.18; // Projection scale factor
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Compute colors based on theme
+            const styles = getComputedStyle(document.documentElement);
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+
+            // Draw bounding sphere wireframe as reference
+            ctx.strokeStyle = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, scale * 2, 0, 2*Math.PI);
+            ctx.stroke();
+
+            // Collect all fibers, project and rotate them
+            const allFibers = [];
+            for (let f = 0; f < numFibers; f++) {
+                const rawPts = getFiberPoints(f, numFibers, eta);
+                const transformed = rawPts.map(p => {
+                    const rot = rotate3D(p.x, p.y, p.z, angleX, angleY);
+                    // simple orthographic projection onto screen
+                    return {
+                        x: centerX + rot.x * scale,
+                        y: centerY - rot.y * scale,
+                        z: rot.z // depth for sorting
+                    };
+                });
+                
+                // Color mapping: generate smooth HSL colors
+                const hue = (f / numFibers) * 360;
+                const saturation = 85;
+                const lightness = isDark ? 65 : 45;
+                const colorStr = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                
+                // compute average depth for sorting
+                const avgDepth = transformed.reduce((acc, p) => acc + p.z, 0) / transformed.length;
+                
+                allFibers.push({ points: transformed, depth: avgDepth, color: colorStr });
+            }
+
+            // Depth sorting (draw back fibers first, then front)
+            allFibers.sort((a, b) => a.depth - b.depth);
+
+            // Draw fibers
+            allFibers.forEach(fiber => {
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                
+                // Draw path
+                const pts = fiber.points;
+                if (pts.length === 0) return;
+                
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < pts.length; i++) {
+                    ctx.lineTo(pts[i].x, pts[i].y);
+                }
+                
+                ctx.strokeStyle = fiber.color;
+                
+                // Apply soft drop shadow glow in dark mode
+                if (isDark) {
+                    ctx.shadowColor = fiber.color;
+                    ctx.shadowBlur = 8;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.stroke();
+            });
+            ctx.shadowBlur = 0; // reset
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

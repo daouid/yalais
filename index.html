@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yalais - Lean 4 Proof Gallery</title>
+    <meta name="description" content="A collection of mathematical proofs with interactive animations and illustrations, formalized in Lean 4.">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="brand">
+                <span>yalais<span class="brand-accent">.</span></span>
+            </a>
+            <div class="nav-controls">
+                <a href="https://github.com/daouid/yalais" target="_blank" class="nav-link" style="font-weight: 500; font-size: 14px; margin-right: 8px;">GitHub</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="container">
+            <h1>Lean 4 Proof Gallery</h1>
+            <p>A collection of mathematical proofs with interactive animations and illustrations.</p>
+        </div>
+    </header>
+
+    <!-- Catalog Control Bar -->
+    <section class="container">
+        <div class="filter-bar">
+            <div class="filter-pills">
+                <button class="filter-pill active" onclick="filterCategory('all')">All Domains</button>
+                <button class="filter-pill" onclick="filterCategory('combinatorics')">Combinatorics</button>
+                <button class="filter-pill" onclick="filterCategory('topology')">Topology</button>
+                <button class="filter-pill" onclick="filterCategory('algebra')">Algebra</button>
+            </div>
+            <input type="text" id="search-input" class="search-input" placeholder="Search theorems or keywords..." oninput="handleSearch()">
+        </div>
+    </section>
+
+    <!-- Catalog Grid -->
+    <main class="container">
+        <div class="catalog-grid" id="catalog-grid">
+            
+            <!-- Caro-Wei Card -->
+            <article class="theorem-card" data-category="combinatorics" data-keywords="caro wei independence number graph degrees sum reciprocal" onclick="location.href='theorems/caro-wei.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/caro_wei_illustration.png');">
+                    <span class="card-badge">Combinatorics</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Caro–Wei Theorem</h3>
+                    <p class="card-desc">The independence number of a simple graph is bounded below by the sum of reciprocal degrees. Proved via the probabilistic method by averaging over vertex permutations.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.SimpleGraph</span>
+                        <a href="theorems/caro-wei.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Hopf Fibration Card -->
+            <article class="theorem-card" data-category="topology" data-keywords="hopf fibration sphere homotopy groups mapping fiber circle" onclick="location.href='theorems/hopf-fibration.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/hopf_fibration_illustration.png');">
+                    <span class="card-badge">Topology</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Hopf Fibration</h3>
+                    <p class="card-desc">Demonstrates the non-trivial homotopy group &pi;₃(S&sup2;) &cong; &integers; by mapping the 3-sphere to the 2-sphere with interlocking circular fibers.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.AlgebraicTopology</span>
+                        <a href="theorems/hopf-fibration.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 yalais &bull; Formally verified using Lean 4 & Mathlib</p>
+        </div>
+    </footer>
+
+    <!-- Global Javascript -->
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Catalog search and filter logic
+        let activeCategory = 'all';
+
+        function filterCategory(cat) {
+            activeCategory = cat;
+            
+            // Update active pill styling
+            const pills = document.querySelectorAll('.filter-pill');
+            pills.forEach(pill => {
+                if (pill.textContent.toLowerCase().includes(cat) || (cat === 'all' && pill.textContent.toLowerCase().includes('all'))) {
+                    pill.classList.add('active');
+                } else {
+                    pill.classList.remove('active');
+                }
+            });
+
+            applyFilters();
+        }
+
+        function handleSearch() {
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.theorem-card');
+            
+            cards.forEach(card => {
+                const category = card.getAttribute('data-category');
+                const keywords = card.getAttribute('data-keywords');
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                
+                const matchesCategory = (activeCategory === 'all' || category === activeCategory);
+                const matchesSearch = !query || title.includes(query) || keywords.includes(query);
+                
+                if (matchesCategory && matchesSearch) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

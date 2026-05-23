@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hopf Fibration - Yalais</title>
+    <meta name="description" content="Formal Lean 4 proof and interactive 3D concept animation of the Hopf Fibration, establishing that the third homotopy group of the 2-sphere is isomorphic to the integers.">
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="brand">
+                <span>yalais<span class="brand-accent">.</span></span>
+            </a>
+            <div class="nav-controls">
+                <a href="../index.html" class="nav-link" style="font-weight: 500; font-size: 14px; margin-right: 8px;">Back to Catalog</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <a href="../index.html" class="back-link">&larr; Back to Catalog</a>
+        
+        <header class="detail-header">
+            <h1 class="detail-title">Hopf Fibration &pi;₃(S&sup2;) &cong; &integers;</h1>
+            <div class="detail-meta">
+                <span class="badge-tag">Topology</span>
+                <span class="badge-tag">Homotopy Theory</span>
+                <span class="badge-tag">Fiber Bundles</span>
+                <span>File: <code>repl/proven/HopfFibration.lean</code></span>
+            </div>
+        </header>
+
+        <div class="visual-row">
+            
+            <!-- Concept Animation Card -->
+            <div class="animation-card">
+                <div class="animation-header">
+                    <span class="animation-title">Concept Animation</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="expand-btn" onclick="toggleExpandAnimation()">&#x26F6; Expand</button>
+                        <span class="animation-badge">Interactive 3D</span>
+                    </div>
+                </div>
+                <div class="animation-wrapper">
+                    <iframe src="../animations/hopf-fibration.html" class="animation-iframe" title="Hopf Fibration 3D Interactive Animation"></iframe>
+                </div>
+            </div>
+
+            <!-- Illustration Card -->
+            <div class="illustration-card">
+                <div class="illustration-header">Geometric Concept Illustration</div>
+                <div class="illustration-img-wrapper">
+                    <img src="../assets/images/hopf_fibration_illustration.png" class="illustration-img" alt="Hopf Fibration Interlocking Circles 3D Illustration" title="Click to zoom">
+                </div>
+            </div>
+
+        </div>
+
+        <div class="content-row">
+            <!-- Mathematical Exposition -->
+            <section class="exposition-panel">
+                <h2>Mathematical Exposition</h2>
+                <p>The <strong>Hopf Fibration</strong> is a fundamental fiber bundle in algebraic topology. It maps the 3-sphere $S^3$ to the 2-sphere $S^2$ such that the preimage of any point on $S^2$ is a circle $S^1$. It is classically represented as:</p>
+                $$ S^1 \hookrightarrow S^3 \xrightarrow{p} S^2 $$
+                <p>Where $p: S^3 \to S^2$ is the projection map. In complex coordinates, if we identify $S^3$ with $\{ (z_0, z_1) \in \mathbb{C}^2 \mid |z_0|^2 + |z_1|^2 = 1 \}$ and $S^2$ with the Riemann sphere $\mathbb{C} \cup \{\infty\}$ (via stereographic projection), the Hopf map is simply $p(z_0, z_1) = z_0 / z_1$.</p>
+                
+                <h3>Homotopy Isomorphism Proof</h3>
+                <p>One of the most important consequences of the Hopf Fibration is the proof that the third homotopy group of $S^2$ is isomorphic to the integers $\mathbb{Z}$. Because $p$ is a fiber bundle with fiber $S^1$, it induces a <strong>long exact sequence of homotopy groups</strong>:</p>
+                $$ \dots \to \pi_3(S^1) \to \pi_3(S^3) \to \pi_3(S^2) \to \pi_2(S^1) \to \dots $$
+                <p>Since the circle $S^1$ has trivial homotopy groups in dimensions 2 and higher ($\pi_2(S^1) = 0$ and $\pi_3(S^1) = 0$), the sequence collapses to a simple isomorphism between $\pi_3(S^3)$ and $\pi_3(S^2)$:</p>
+                $$ 0 \to \pi_3(S^3) \xrightarrow{p_*} \pi_3(S^2) \to 0 $$
+                <p>By the Hurewicz Theorem, the third homotopy group of the 3-sphere is isomorphic to the integers, generated by the identity map ($\pi_3(S^3) \cong \mathbb{Z}$). Thus, we obtain the isomorphism:</p>
+                $$ \pi_3(S^2) \cong \mathbb{Z} $$
+                <p>This was a historical milestone because it showed that spheres can have non-trivial higher homotopy groups ($\pi_k(S^n) \neq 0$ for $k > n$). The generator of this group is the class of the Hopf map itself, which has a Hopf invariant of $1$. Geometrically, this invariant measures the linking number of any two circular fibers in $S^3$, which is always exactly $1$.</p>
+            </section>
+
+            <!-- Lean 4 Code block -->
+            <section class="code-panel">
+                <div class="code-header">
+                    <span class="code-title">HopfFibration.lean</span>
+                    <button class="copy-btn" data-target="lean-code">Copy Code</button>
+                </div>
+                <pre class="code-content"><code id="lean-code" class="language-lean">/-- The Hopf fibration S¹ → S³ → S² induces an isomorphism π₃(S³) ≃ π₃(S²). -/
+noncomputable def pi3_hopf_iso_equiv (x3 : S3) :
+    π_ 3 S3 x3 ≃* π_ 3 S2 (hopfMap x3) :=
+  MulEquiv.ofBijective (HomotopyGroup.map hopfCMap rfl 3) 
+    ⟨hopf_pi3_injective x3, hopf_pi3_surjective x3⟩
+
+lemma pi3_hopf_iso (x3 : S3) :
+    Nonempty (π_ 3 S3 x3 ≃* π_ 3 S2 (hopfMap x3)) :=
+  ⟨pi3_hopf_iso_equiv x3⟩
+
+/-- Homotopy groups of S² are independent of basepoint. -/
+lemma pi3_S2_indep (x y : S2) :
+  Nonempty (π_ 3 S2 x ≃* π_ 3 S2 y) := by
+  have hx : ‖(x : EuclideanSpace ℝ (Fin 3))‖ = 1 := mem_sphere_zero_iff_norm.mp x.2
+  have hy : ‖(y : EuclideanSpace ℝ (Fin 3))‖ = 1 := mem_sphere_zero_iff_norm.mp y.2
+  obtain ⟨φ, hφ⟩ := exists_linearIsometryEquiv_map_eq x y hx hy
+  let φ_S2 := LinearIsometryEquiv.restrictSphere φ 1
+  have h_base : φ_S2 x = y := Subtype.ext hφ
+  exact ⟨HomotopyGroup.equivOfHomeomorph φ_S2 h_base 3⟩
+
+/-- The main theorem: π₃(S²) is isomorphic to ℤ. -/
+theorem pi3_sphere_two_mulEquiv_int (x : S2) :
+    Nonempty (HomotopyGroup (Fin 3) S2 x ≃* Multiplicative ℤ) := by
+  obtain ⟨iso_hopf⟩ := pi3_hopf_iso S3_basepoint
+  obtain ⟨iso_s3⟩ := pi3_sphere3_iso_int S3_basepoint
+  let x2_base := hopfMap S3_basepoint
+  have h_iso_base : Nonempty (π_ 3 S2 x2_base ≃* Multiplicative ℤ) :=
+    ⟨iso_hopf.symm.trans iso_s3⟩
+  obtain ⟨iso_base_change⟩ := pi3_S2_indep x x2_base
+  obtain ⟨iso_final⟩ := h_iso_base
+  exact ⟨iso_base_change.trans iso_final⟩</code></pre>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 yalais &bull; Formally verified using Lean 4 & Mathlib</p>
+        </div>
+    </footer>
+
+    <!-- Global Javascript -->
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>
