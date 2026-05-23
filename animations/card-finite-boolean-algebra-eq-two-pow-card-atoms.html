@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boolean Algebra Cardinality Animation</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #12b886; /* green theme matching algebra badge */
+            --accent-glow: rgba(18, 184, 134, 0.2);
+            --node-default: #f1f3f5;
+            --edge-default: #dee2e6;
+            --atom-highlight: #4c6ef5; /* blue for atoms */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #20c997;
+            --accent-glow: rgba(32, 201, 151, 0.3);
+            --node-default: #1b1d26;
+            --edge-default: #242731;
+            --atom-highlight: #5c7cfa;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 240px;
+            width: calc(25% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
+        }
+        button {
+            flex: 1;
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button.active {
+            outline: 2px solid var(--text-color);
+        }
+        button.sec {
+            background: var(--border-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .instructions {
+            font-size: 9px;
+            color: var(--text-color);
+            opacity: 0.7;
+            margin-top: 8px;
+            line-height: 1.3;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Lattice Config</div>
+        <div class="stat-line">
+            <span>Atoms (k):</span>
+            <span class="stat-val" id="atoms-count">3</span>
+        </div>
+        <div class="stat-line">
+            <span>Elements (2^k):</span>
+            <span class="stat-val" id="elements-count" style="color: var(--accent);">8</span>
+        </div>
+        <div class="stat-line">
+            <span>Selected Element:</span>
+            <span class="stat-val" id="sel-element" style="color: var(--accent);">None</span>
+        </div>
+        <div class="stat-line">
+            <span>Binary String:</span>
+            <span class="stat-val" id="sel-binary">None</span>
+        </div>
+        <div class="stat-line">
+            <span>Constituent Atoms:</span>
+            <span class="stat-val" id="sel-atoms" style="color: var(--atom-highlight);">None</span>
+        </div>
+
+        <div class="btn-group">
+            <span style="font-size: 10px; font-weight: 600; margin-bottom: 2px;">Number of Atoms:</span>
+            <div class="btn-row">
+                <button id="btn-k1" class="sec" onclick="setK(1)">1</button>
+                <button id="btn-k2" class="sec" onclick="setK(2)">2</button>
+                <button id="btn-k3" class="active" onclick="setK(3)">3</button>
+                <button id="btn-k4" class="sec" onclick="setK(4)">4</button>
+            </div>
+            <span style="font-size: 10px; font-weight: 600; margin-bottom: 2px; margin-top: 6px;">Options:</span>
+            <div class="btn-row">
+                <button id="btn-notation" class="sec" onclick="toggleNotation()">Show Binary</button>
+                <button id="btn-rotation" class="active" onclick="toggleRotation()">Spinning</button>
+            </div>
+        </div>
+        <div class="instructions">
+            Hover over elements in the Hasse diagram to see the subset-binary bijection.
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let k = 3;
+        let showBinary = false;
+        let doRotate = true;
+        let rotationAngle = 0.5; // start slightly offset
+        let hoveredNode = null;
+        let nodes = [];
+        let edges = [];
+
+        const atomNames = ['a', 'b', 'c', 'd'];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.style.width = `${rect.width}px`;
+            ctx.style.height = `${rect.height}px`;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function setK(newK) {
+            k = newK;
+            document.getElementById('atoms-count').textContent = k;
+            document.getElementById('elements-count').textContent = Math.pow(2, k);
+            
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`btn-k${i}`).className = i === k ? 'active' : 'sec';
+            }
+            
+            initLattice();
+            draw();
+        }
+
+        function toggleNotation() {
+            showBinary = !showBinary;
+            document.getElementById('btn-notation').textContent = showBinary ? "Show Subsets" : "Show Binary";
+            draw();
+        }
+
+        function toggleRotation() {
+            doRotate = !doRotate;
+            document.getElementById('btn-rotation').className = doRotate ? 'active' : 'sec';
+        }
+
+        // Initialize node and edge structures
+        function initLattice() {
+            nodes = [];
+            edges = [];
+            const numNodes = Math.pow(2, k);
+
+            // Generate nodes
+            for (let m = 0; m < numNodes; m++) {
+                // Determine level (Hamming weight of m)
+                let level = 0;
+                let bits = [];
+                for (let i = 0; i < k; i++) {
+                    const bit = (m >> i) & 1;
+                    level += bit;
+                    bits.push(bit);
+                }
+
+                // Determine label
+                let subsetStr = "";
+                let atomsList = [];
+                bits.forEach((b, idx) => {
+                    if (b === 1) {
+                        subsetStr += atomNames[idx];
+                        atomsList.push(atomNames[idx]);
+                    }
+                });
+
+                let label = subsetStr ? `{${subsetStr.split('').join(',')}}` : "∅";
+                let binaryStr = bits.slice().reverse().join('');
+
+                nodes.push({
+                    id: m,
+                    bits: bits,
+                    level: level,
+                    label: label,
+                    binary: binaryStr,
+                    atoms: atomsList
+                });
+            }
+
+            // Generate edges (connecting node u at level l to node v at level l+1 if u subset v)
+            for (let u = 0; u < numNodes; u++) {
+                for (let v = 0; v < numNodes; v++) {
+                    if (nodes[v].level === nodes[u].level + 1) {
+                        // Check if u is subset of v: u & v === u
+                        if ((u & v) === u) {
+                            edges.push({ from: u, to: v });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Mouse hover handler
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let foundNode = null;
+            let minDist = 20; // hover threshold in px
+
+            nodes.forEach(n => {
+                if (n.x && n.y) {
+                    const dist = Math.hypot(mouseX - n.x, mouseY - n.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        foundNode = n;
+                    }
+                }
+            });
+
+            if (foundNode !== hoveredNode) {
+                hoveredNode = foundNode;
+                updatePanelDetails();
+                draw();
+            }
+        });
+
+        function updatePanelDetails() {
+            const elVal = document.getElementById('sel-element');
+            const binVal = document.getElementById('sel-binary');
+            const atomsVal = document.getElementById('sel-atoms');
+
+            if (hoveredNode) {
+                elVal.textContent = hoveredNode.label;
+                binVal.textContent = hoveredNode.binary;
+                atomsVal.textContent = hoveredNode.atoms.length > 0 ? `{${hoveredNode.atoms.join(',')}}` : "None";
+            } else {
+                elVal.textContent = "None";
+                binVal.textContent = "None";
+                atomsVal.textContent = "None";
+            }
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            const edgeColor = styles.getPropertyValue('--edge-default').trim();
+            const atomHighlight = styles.getPropertyValue('--atom-highlight').trim();
+
+            const leftOffset = w > 600 ? 220 : 0;
+            const drawW = w - leftOffset;
+            const centerX = leftOffset + drawW / 2;
+            const centerY = h / 2;
+
+            // Dimensions and positions
+            const levelSpacing = h * 0.7 / k;
+            const dVal = Math.min(drawW, h) * 0.22;
+
+            // Calculate 3D rotated horizontal offset for each node
+            nodes.forEach(n => {
+                let x0 = 0;
+                let z0 = 0;
+
+                // Base multidimensional coordinate projection
+                n.bits.forEach((bit, idx) => {
+                    const angle = (2 * Math.PI * idx) / k + (k === 4 ? Math.PI/4 : 0);
+                    // Shift so centered around 0
+                    const val = bit - 0.5;
+                    x0 += val * dVal * Math.cos(angle);
+                    z0 += val * dVal * Math.sin(angle);
+                });
+
+                // Apply horizontal spin rotation (around vertical Y axis)
+                const xRot = x0 * Math.cos(rotationAngle) - z0 * Math.sin(rotationAngle);
+                const zRot = x0 * Math.sin(rotationAngle) + z0 * Math.cos(rotationAngle);
+
+                // Set coordinates
+                n.x = centerX + xRot;
+                // Vertical Y is fixed by lattice level (poset level structure)
+                n.y = h * 0.88 - n.level * levelSpacing;
+                n.depth = zRot; // store depth for 3D sorting if needed
+            });
+
+            // Check if any element containing hovered node's atoms should be highlighted
+            const highlightedNodeIds = new Set();
+            const highlightedEdgeIndices = new Set();
+
+            if (hoveredNode) {
+                // If it is the empty set (id = 0), only highlight itself
+                if (hoveredNode.id === 0) {
+                    highlightedNodeIds.add(0);
+                } else {
+                    // Highlight all nodes that are subsets of the hovered node
+                    // i.e. (id & hoveredNode.id) === id
+                    for (let m = 0; m < Math.pow(2, k); m++) {
+                        if ((m & hoveredNode.id) === m) {
+                            highlightedNodeIds.add(m);
+                        }
+                    }
+
+                    // Highlight all edges between highlighted nodes
+                    edges.forEach((e, idx) => {
+                        if (highlightedNodeIds.has(e.from) && highlightedNodeIds.has(e.to)) {
+                            highlightedEdgeIndices.add(idx);
+                        }
+                    });
+                }
+            }
+
+            // Draw Edges
+            ctx.lineWidth = 1.5;
+            edges.forEach((e, idx) => {
+                const n1 = nodes[e.from];
+                const n2 = nodes[e.to];
+
+                ctx.beginPath();
+                ctx.moveTo(n1.x, n1.y);
+                ctx.lineTo(n2.x, n2.y);
+
+                if (highlightedEdgeIndices.has(idx)) {
+                    ctx.strokeStyle = hoveredNode.id === (1 << n1.level) ? atomHighlight : accent;
+                    ctx.lineWidth = 2.5;
+                } else {
+                    ctx.strokeStyle = edgeColor;
+                    ctx.lineWidth = 1.2;
+                }
+                ctx.stroke();
+            });
+
+            // Draw Nodes
+            nodes.forEach(n => {
+                const isHovered = hoveredNode && hoveredNode.id === n.id;
+                const isHighlighted = highlightedNodeIds.has(n.id);
+                const isAtom = n.level === 1;
+
+                // Adjust node visual size based on depth to convey 3D depth
+                const maxDepth = dVal * Math.sqrt(k);
+                const depthScale = 0.8 + 0.4 * (n.depth + maxDepth) / (2 * maxDepth || 1);
+                const r = 18 * depthScale;
+
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+
+                // Set colors based on state
+                if (isHovered) {
+                    ctx.fillStyle = n.id === 0 ? accent : (isAtom ? atomHighlight : accent);
+                    ctx.shadowColor = ctx.fillStyle;
+                    ctx.shadowBlur = 15;
+                } else if (isHighlighted) {
+                    // constituents of hovered element
+                    ctx.fillStyle = isAtom ? atomHighlight : accent;
+                    ctx.globalAlpha = 0.15;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    ctx.fillStyle = nodeDefault;
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.fillStyle = nodeDefault;
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Border
+                ctx.strokeStyle = isHovered ? (isAtom ? atomHighlight : accent) : (isHighlighted ? (isAtom ? atomHighlight : accent) : borderColor);
+                ctx.lineWidth = isHovered || isHighlighted ? 2.5 : 1.5;
+                ctx.stroke();
+
+                // Text Label inside node
+                ctx.fillStyle = isHovered ? "#ffffff" : textColor;
+                
+                // Adjust font size based on depth and label length
+                const fontSize = Math.max(9, Math.round(11 * depthScale));
+                ctx.font = `bold ${fontSize}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                const displayLabel = showBinary ? n.binary : n.label;
+                ctx.fillText(displayLabel, n.x, n.y);
+            });
+        }
+
+        // Animation Loop
+        function animate() {
+            if (doRotate) {
+                rotationAngle += 0.005;
+                draw();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize and start animation
+        initLattice();
+        resize();
+        animate();
+    </script>
+</body>
+</html>

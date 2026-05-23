@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rouché's Theorem — Dog on a Leash Metaphor</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #4f46e5;
+      --f-color: #0d9488;
+      --fg-color: #db2777;
+      --card-bg: rgba(255, 255, 255, 0.82);
+      --card-border: rgba(15, 23, 42, 0.08);
+      --grid: #e2e8f0;
+      --border-circle: #cbd5e1;
+      --post: #0f172a;
+      --leash-fill: rgba(79, 70, 229, 0.06);
+      --leash-stroke: rgba(79, 70, 229, 0.2);
+    }
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #818cf8;
+      --f-color: #2dd4bf;
+      --fg-color: #f472b6;
+      --card-bg: rgba(15, 23, 42, 0.82);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --grid: #334155;
+      --border-circle: #475569;
+      --post: #f8fafc;
+      --leash-fill: rgba(129, 140, 248, 0.06);
+      --leash-stroke: rgba(129, 140, 248, 0.2);
+    }
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+    .panel {
+      position: absolute; top: 20px; left: 20px; z-index: 10; width: 230px;
+      padding: 12px; background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 12px; backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    h1 { font-size: 13px; font-weight: 700; margin: 0 0 6px 0; }
+    p { font-size: 11px; color: var(--muted); margin: 0 0 10px 0; line-height: 1.4; }
+    .controls { display: flex; flex-direction: column; gap: 8px; }
+    .control-item { display: flex; flex-direction: column; gap: 4px; font-size: 10px; font-weight: 600; color: var(--muted); }
+    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    .badge { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: 700; color: white; border-radius: 4px; margin-bottom: 8px; }
+    .badge-f { background-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="panel">
+    <div class="badge badge-f">Rouché's Theorem</div>
+    <h1>Dog on a Leash Metaphor</h1>
+    <p>Visualizing <code>rouche_zero_count_eq</code>. The person <em>f</em> winds around 0. The dog <em>f + g</em> is bounded by leash |g| < |f|. Since the leash never crosses 0, the dog wraps 0 the same number of times as the person, implying they have equal zeros inside.</p>
+    <div class="controls">
+      <div class="control-item">
+        <label>Leash Length |g|: <span id="g-val">0.50</span></label>
+        <input type="range" id="g-slider" min="0.1" max="0.9" step="0.05" value="0.5">
+      </div>
+      <div class="control-item">
+        <label>Simulation Speed</label>
+        <input type="range" id="speed-slider" min="0.1" max="2.0" step="0.1" value="1.0">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let gMag = 0.5, speed = 1.0, theta = 0;
+    
+    document.getElementById('g-slider').addEventListener('input', (e) => {
+      gMag = parseFloat(e.target.value);
+      document.getElementById('g-val').textContent = gMag.toFixed(2);
+    });
+    document.getElementById('speed-slider').addEventListener('input', (e) => { speed = parseFloat(e.target.value); });
+
+    // Design Tokens Theme Observer
+    const colors = {};
+    function updateColors() {
+      const style = getComputedStyle(document.documentElement);
+      colors.bg = style.getPropertyValue('--bg').trim();
+      colors.text = style.getPropertyValue('--text').trim();
+      colors.muted = style.getPropertyValue('--muted').trim();
+      colors.accent = style.getPropertyValue('--accent').trim();
+      colors.fColor = style.getPropertyValue('--f-color').trim();
+      colors.fgColor = style.getPropertyValue('--fg-color').trim();
+      colors.grid = style.getPropertyValue('--grid').trim();
+      colors.borderCircle = style.getPropertyValue('--border-circle').trim();
+      colors.post = style.getPropertyValue('--post').trim();
+      colors.leashFill = style.getPropertyValue('--leash-fill').trim();
+      colors.leashStroke = style.getPropertyValue('--leash-stroke').trim();
+    }
+    updateColors();
+
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.theme) {
+        document.documentElement.setAttribute('data-theme', event.data.theme);
+        updateColors();
+      }
+    });
+    // Request current theme from parent page immediately on load
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ requestTheme: true }, '*');
+    }
+
+    let width, height;
+    function resize() {
+      width = window.innerWidth; height = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr; canvas.height = height * dpr;
+      canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const f = (t) => ({ x: Math.cos(2 * t), y: Math.sin(2 * t) });
+    const g = (t) => ({ x: gMag * Math.cos(t), y: gMag * Math.sin(t) });
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      const leftOffset = width > 600 ? 220 : 0;
+      const clearW = width - leftOffset;
+      const x1 = leftOffset + clearW * 0.28, x2 = leftOffset + clearW * 0.72;
+      const yc = height * 0.5, rScale = Math.min(clearW * 0.18, height * 0.28);
+
+      // Draw grids & labels
+      ctx.strokeStyle = colors.grid; ctx.lineWidth = 1;
+      [x1, x2].forEach(cx => {
+        ctx.beginPath(); ctx.moveTo(cx - rScale * 1.25, yc); ctx.lineTo(cx + rScale * 1.25, yc);
+        ctx.moveTo(cx, yc - rScale * 1.25); ctx.lineTo(cx, yc + rScale * 1.25); ctx.stroke();
+      });
+      ctx.fillStyle = colors.muted; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('z-plane (Domain)', x1, yc - rScale * 1.1);
+      ctx.fillText('w-plane (Codomain)', x2, yc - rScale * 1.1);
+
+      // Left Plane: Domain unit circle |z|=1
+      ctx.strokeStyle = colors.borderCircle; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x1, yc, rScale, 0, 2 * Math.PI); ctx.stroke();
+
+      // Left Plane: Zeros of f (double zero at origin)
+      ctx.fillStyle = colors.fColor; ctx.beginPath(); ctx.arc(x1, yc, 6, 0, 2 * Math.PI); ctx.fill();
+      ctx.font = '9px sans-serif'; ctx.fillText('z=0 (double zero of f)', x1, yc + 16);
+
+      // Left Plane: Zeros of f+g (at 0 and -gMag)
+      ctx.fillStyle = colors.fgColor; ctx.beginPath(); ctx.arc(x1 - gMag * rScale, yc, 4, 0, 2 * Math.PI); ctx.fill();
+      ctx.fillText(`z = -${gMag.toFixed(2)} (zeros of f+g)`, x1 - gMag * rScale, yc - 10);
+
+      // Left Plane: Moving boundary point z
+      const zx = x1 + rScale * Math.cos(theta), zy = yc - rScale * Math.sin(theta);
+      ctx.fillStyle = colors.accent; ctx.beginPath(); ctx.arc(zx, zy, 5, 0, 2 * Math.PI); ctx.fill();
+
+      // Right Plane: Path of f (wound twice)
+      ctx.strokeStyle = colors.fColor; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let t = 0; t <= 2 * Math.PI; t += 0.05) {
+        const pt = f(t);
+        ctx.lineTo(x2 + pt.x * rScale, yc - pt.y * rScale);
+      }
+      ctx.stroke();
+
+      // Right Plane: Path of f+g
+      ctx.strokeStyle = colors.fgColor; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let t = 0; t <= 2 * Math.PI; t += 0.02) {
+        const p1 = f(t), p2 = g(t);
+        ctx.lineTo(x2 + (p1.x + p2.x) * rScale, yc - (p1.y + p2.y) * rScale);
+      }
+      ctx.stroke();
+
+      // Right Plane vectors
+      const fz = f(theta), gz = g(theta);
+      const fzx = x2 + fz.x * rScale, fzy = yc - fz.y * rScale;
+      const fgzx = x2 + (fz.x + gz.x) * rScale, fgzy = yc - (fz.y + gz.y) * rScale;
+
+      // Draw leash boundary circle
+      ctx.fillStyle = colors.leashFill; ctx.beginPath();
+      ctx.arc(fzx, fzy, gMag * rScale, 0, 2 * Math.PI); ctx.fill();
+      ctx.strokeStyle = colors.leashStroke; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+
+      // Leash line (g vector) and participants
+      ctx.strokeStyle = colors.accent; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(fzx, fzy); ctx.lineTo(fgzx, fgzy); ctx.stroke();
+
+      // Person f(z)
+      ctx.fillStyle = colors.fColor; ctx.beginPath(); ctx.arc(fzx, fzy, 6, 0, 2 * Math.PI); ctx.fill();
+      // Dog f(z)+g(z)
+      ctx.fillStyle = colors.fgColor; ctx.beginPath(); ctx.arc(fgzx, fgzy, 5, 0, 2 * Math.PI); ctx.fill();
+      // Post (origin)
+      ctx.fillStyle = colors.post; ctx.beginPath(); ctx.arc(x2, yc, 4, 0, 2 * Math.PI); ctx.fill();
+
+      // Ray to person
+      ctx.save();
+      ctx.strokeStyle = colors.fColor;
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x2, yc); ctx.lineTo(fzx, fzy); ctx.stroke();
+      ctx.restore();
+
+      theta += 0.005 * speed;
+      if (theta > 2 * Math.PI) theta -= 2 * Math.PI;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+</body>
+</html>

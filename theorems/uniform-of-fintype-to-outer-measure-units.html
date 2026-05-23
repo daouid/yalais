@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniform Distribution on ZMod p Units - Yalais</title>
+    <meta name="description" content="Formal Lean 4 proof and interactive concept animation of the measure of units in ZMod p under the uniform distribution.">
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="brand">
+                <span>yalais<span class="brand-accent">.</span></span>
+            </a>
+            <div class="nav-controls">
+                <a href="../index.html" class="nav-link" style="font-weight: 500; font-size: 14px; margin-right: 8px;">Back to Catalog</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <header class="detail-header">
+            <h1 class="detail-title">Uniform Distribution on ZMod p Units</h1>
+            <div class="detail-meta">
+                <span class="badge-tag algebra">Algebra</span>
+                <span class="badge-tag purple">Probability</span>
+                <span class="badge-tag red">Number Theory</span>
+                <span>File: <code class="code-ref">repl/proven/Probability.lean</code></span>
+            </div>
+        </header>
+
+        <!-- Visual Row -->
+        <div class="visual-row">
+            <!-- Concept Animation Card -->
+            <div class="animation-card">
+                <div class="animation-header">
+                    <span class="animation-title">Concept Animation</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="expand-btn" onclick="toggleExpandAnimation()">&#x26F6; Expand</button>
+                        <span class="animation-badge">Interactive 2D</span>
+                    </div>
+                </div>
+                <div class="animation-wrapper">
+                    <iframe src="../animations/uniform-of-fintype-to-outer-measure-units.html" class="animation-iframe" title="Uniform Distribution on ZMod p Units Interactive Animation"></iframe>
+                </div>
+            </div>
+
+            <!-- Illustration Card -->
+            <div class="illustration-card">
+                <div class="illustration-header">Geometric Concept Illustration</div>
+                <div class="illustration-img-wrapper">
+                    <img src="../assets/images/uniform_of_fintype_to_outer_measure_units_illustration.png" class="illustration-img" alt="Uniform ZMod p Units Geometric Concept Illustration" title="Click to zoom">
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Row -->
+        <div class="content-row">
+            <!-- Mathematical Exposition -->
+            <section class="exposition-panel">
+                <h2>Mathematical <span class="text-algebra">Exposition</span></h2>
+                <p>The theorem establishes that under a uniform distribution on the cyclic group of integers modulo a prime $p$ (denoted as $\mathbb{Z}/p\mathbb{Z}$ or <code>ZMod p</code>), the probability (or measure) of selecting a unit (an invertible element) is exactly $\frac{p - 1}{p}$.</p>
+                
+                $$ P(\text{IsUnit}) = \frac{p - 1}{p} $$
+
+                <p>This result links basic probability theory with modular arithmetic and field theory. When $p$ is a prime number, the quotient ring $\mathbb{Z}/p\mathbb{Z}$ forms a finite field $\mathbb{F}_p$. By definition, a field is a commutative ring in which every non-zero element has a multiplicative inverse. Therefore, the set of units $U = (\mathbb{Z}/p\mathbb{Z})^\times$ is exactly the set of all non-zero elements:</p>
+                
+                $$ U = \{x \in \mathbb{Z}/p\mathbb{Z} \mid x \neq 0\} $$
+
+                <p>Since $\mathbb{Z}/p\mathbb{Z}$ has exactly $p$ elements ($0, 1, 2, \ldots, p-1$), the size of the unit set is:</p>
+                
+                $$ |U| = p - 1 $$
+
+                <p>For a uniform probability distribution, the probability mass function (PMF) assigns an equal probability weight of $\frac{1}{p}$ to every element. Because the events corresponding to each individual element are mutually disjoint, the total probability of selecting a unit is the sum of the individual probabilities of all units:</p>
+
+                $$ P(U) = \sum_{x \in U} P(x) = \sum_{x \neq 0} \frac{1}{p} = (p - 1) \cdot \frac{1}{p} = \frac{p - 1}{p} $$
+
+                <h3>Proof <span class="text-purple">Methodology</span></h3>
+                <p>The formal proof in Lean 4 utilizes the <code>PMF.uniformOfFintype</code> distribution from Mathlib. The proof proceeds as follows:</p>
+                <ol>
+                    <li><strong>Measure Unfolding:</strong> The application of <code>toOuterMeasure</code> to the set of units is unfolded via <code>PMF.toOuterMeasure_apply</code>, which expresses the measure of a set as an infinite sum (<code>tsum</code>) of indicators.</li>
+                    <li><strong>Sum Reduction:</strong> Since <code>ZMod p</code> is a finite type (<code>Fintype</code>), the infinite sum is converted into a finite sum over the universal set <code>univ</code> using the lemma <code>tsum_eq_sum</code>.</li>
+                    <li><strong>Algebraic Equivalence:</strong> The core algebraic step is proving that an element $x \in \mathbb{Z}/p\mathbb{Z}$ is a unit if and only if it is non-zero (<code>isUnit_iff_ne_zero</code>), which holds because $p$ is prime.</li>
+                    <li><strong>Filtering and Counting:</strong> The set of units is rewritten as <code>Finset.filter (· ≠ 0) univ</code>, which is equivalent to erasing $0$ from the universal set. The cardinality of this set is computed as the card of the universe minus one, yielding $p-1$.</li>
+                    <li><strong>Evaluation:</strong> Multiplying the card $p-1$ by the uniform weight $1/p$ yields the final result.</li>
+                </ol>
+            </section>
+
+            <!-- Lean 4 Code block -->
+            <section class="code-panel">
+                <div class="code-header">
+                    <span class="code-title">Probability.lean</span>
+                    <button class="copy-btn" data-target="lean-code">Copy Code</button>
+                </div>
+                <pre class="code-content"><code id="lean-code" class="language-lean">import Mathlib
+
+open MeasureTheory ProbabilityTheory Set Topology Filter PMF ENNReal NNReal
+  Nat Function FiniteField Finset MeasureTheory.Measure
+
+/-- The uniform distribution on `ZMod p` (for prime `p`) assigns measure `(p - 1) / p`
+to the set of units. -/
+theorem uniformOfFintype_toOuterMeasure_units (p : ℕ) [Fact p.Prime] :
+    (PMF.uniformOfFintype (ZMod p)).toOuterMeasure {x : ZMod p | IsUnit x} =
+    (p - 1 : ℕ) / p := by
+  classical
+  rw [PMF.toOuterMeasure_apply]
+  simp only [Set.indicator_apply, mem_setOf_eq, PMF.uniformOfFintype_apply, ZMod.card]
+  rw [tsum_eq_sum (fun _ h => (h (mem_univ _)).elim), ← Finset.sum_filter]
+  simp only [Finset.sum_const, nsmul_eq_mul]
+  congr 1
+  have : Finset.filter (fun x : ZMod p ↦ IsUnit x) univ = Finset.filter (· ≠ 0) univ := by
+    ext x; simp [isUnit_iff_ne_zero]
+  rw [this, Finset.filter_ne', Finset.card_erase_of_mem (Finset.mem_univ _),
+      Finset.card_univ, ZMod.card]
+</code></pre>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 yalais &bull; Formally verified using Lean 4 & Mathlib</p>
+        </div>
+    </footer>
+
+    <!-- Global Javascript -->
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

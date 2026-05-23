@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cauchy Sequence of Irreducible Space - Yalais</title>
+    <meta name="description" content="Formal Lean 4 proof and interactive concept animation of the Cauchy Sequence of Irreducible Space theorem.">
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="brand">
+                <span>yalais<span class="brand-accent">.</span></span>
+            </a>
+            <div class="nav-controls">
+                <a href="../index.html" class="nav-link" style="font-weight: 500; font-size: 14px; margin-right: 8px;">Back to Catalog</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <header class="detail-header">
+            <h1 class="detail-title">Cauchy Sequence of Irreducible Space</h1>
+            <div class="detail-meta">
+                <span class="badge-tag topology">Topology</span>
+                <span class="badge-tag purple">Metric Space</span>
+                <span>File: <code class="code-ref">repl/proven/Miscellaneous.lean</code></span>
+            </div>
+        </header>
+
+        <!-- Visual Row -->
+        <div class="visual-row">
+            <!-- Concept Animation Card -->
+            <div class="animation-card">
+                <div class="animation-header">
+                    <span class="animation-title">Concept Animation</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="expand-btn" onclick="toggleExpandAnimation()">&#x26F6; Expand</button>
+                        <span class="animation-badge">Interactive 2D</span>
+                    </div>
+                </div>
+                <div class="animation-wrapper">
+                    <iframe src="../animations/cauchy-seq-of-irreducible-space.html" class="animation-iframe" title="Cauchy Sequence of Irreducible Space Interactive Animation"></iframe>
+                </div>
+            </div>
+
+            <!-- Illustration Card -->
+            <div class="illustration-card">
+                <div class="illustration-header">Geometric Concept Illustration</div>
+                <div class="illustration-img-wrapper">
+                    <img src="../assets/images/cauchy_seq_of_irreducible_space_illustration.png" class="illustration-img" alt="Cauchy Sequence of Irreducible Space Geometric Concept Illustration" title="Click to zoom">
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Row -->
+        <div class="content-row">
+            <!-- Mathematical Exposition -->
+            <section class="exposition-panel">
+                <h2>Mathematical Exposition</h2>
+                <p>
+                    In topology and metric space theory, we are accustomed to spaces where sequences can behave wildly. For instance, in Euclidean space $\mathbb{R}^d$, most sequences are not Cauchy. However, this theorem establishes a fascinating topological constraint: <strong>in any irreducible pseudometric space, every sequence is Cauchy.</strong>
+                </p>
+                
+                <h3>Key Definitions</h3>
+                <ul>
+                    <li>
+                        <strong>Pseudometric Space:</strong> A generalization of a metric space where the distance between two distinct points can be zero: $dist(x,y) \geq 0$, $dist(x,x) = 0$, $dist(x,y) = dist(y,x)$, and the triangle inequality $dist(x,z) \leq dist(x,y) + dist(y,z)$ holds.
+                    </li>
+                    <li>
+                        <strong>Irreducible Space:</strong> A topological space $X$ is irreducible if it cannot be written as the union of two proper closed subsets. Equivalently, <em>every pair of nonempty open sets has a nonempty intersection</em>.
+                    </li>
+                    <li>
+                        <strong>Cauchy Sequence:</strong> A sequence $(u_n)$ in $X$ such that for every $\epsilon > 0$, there exists some index $N$ such that $dist(u_m, u_n) < \epsilon$ for all $m, n \ge N$.
+                    </li>
+                </ul>
+
+                <h3>The Core Proof Logic</h3>
+                <p>
+                    Let $(u_n)_{n \in \mathbb{N}}$ be an arbitrary sequence in an irreducible pseudometric space $X$. We wish to show that $(u_n)$ is Cauchy.
+                </p>
+                <p>
+                    Given any $\epsilon > 0$, we consider any two terms $u_m$ and $u_n$ of the sequence. Let us define two open balls of radius $\epsilon/2$ around them:
+                    $$B_m = B\left(u_m, \frac{\epsilon}{2}\right) \quad \text{and} \quad B_n = B\left(u_n, \frac{\epsilon}{2}\right)$$
+                    Since open balls in a pseudometric space are nonempty (as they contain their centers), $B_m$ and $B_n$ are nonempty open sets.
+                </p>
+                <p>
+                    Because the space $X$ is <span class="text-topology">irreducible</span>, any two nonempty open sets must intersect. Thus, we are guaranteed that:
+                    $$B_m \cap B_n \neq \emptyset$$
+                    This means there exists some point $z \in X$ which lies in both balls, satisfying:
+                    $$dist(u_m, z) < \frac{\epsilon}{2} \quad \text{and} \quad dist(z, u_n) < \frac{\epsilon}{2}$$
+                </p>
+                <p>
+                    Applying the triangle inequality, we obtain:
+                    $$dist(u_m, u_n) \le dist(u_m, z) + dist(z, u_n) < \frac{\epsilon}{2} + \frac{\epsilon}{2} = \epsilon$$
+                    Since this inequality holds for all indices $m, n \ge 0$, the sequence is indeed Cauchy.
+                </p>
+
+                <h3>Triviality of the Pseudometric</h3>
+                <p>
+                    Mathematically, this result points to a deeper property of irreducible pseudometric spaces: the pseudometric must be trivial. Specifically, the distance between any two points in the space is exactly $0$. 
+                </p>
+                <p>
+                    To see why, suppose there existed two points $x, y \in X$ with $dist(x, y) = d > 0$. The open balls $B(x, d/2)$ and $B(y, d/2)$ would be disjoint nonempty open sets, directly contradicting the assumption that the space is irreducible. Thus, all points are at distance $0$, which trivially forces every sequence to be Cauchy.
+                </p>
+            </section>
+
+            <!-- Lean 4 Code block -->
+            <section class="code-panel">
+                <div class="code-header">
+                    <span class="code-title">Miscellaneous.lean</span>
+                    <button class="copy-btn" data-target="lean-code">Copy Code</button>
+                </div>
+                <pre class="code-content"><code id="lean-code" class="language-lean">import Mathlib
+
+open Topology Uniformity Set Filter
+
+/-- In an irreducible pseudometric space, every sequence is Cauchy. This is because
+all nonempty open sets must intersect (by irreducibility), so in particular all open balls
+overlap, forcing all pairwise distances below any positive threshold. -/
+theorem cauchySeq_of_irreducibleSpace [PseudoMetricSpace α] [IrreducibleSpace α] (u : ℕ → α) : CauchySeq u := by
+  rw [Metric.cauchySeq_iff]; intro ε hε; use 0; intro m _ n _
+  obtain ⟨z, hz, hzn⟩ := (Metric.mem_closure_iff.mp
+    ((IsOpen.dense Metric.isOpen_ball ⟨u m, Metric.mem_ball_self (half_pos hε)⟩) (u n)))
+    (ε / 2) (half_pos hε)
+  rw [Metric.mem_ball] at hz
+  calc dist (u m) (u n) ≤ dist (u m) z + dist z (u n) := dist_triangle _ _ _
+    _ < ε / 2 + ε / 2 := add_lt_add (by rwa [dist_comm] at hz) (by rwa [dist_comm] at hzn)
+    _ = ε := add_halves ε</code></pre>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 yalais &bull; Formally verified using Lean 4 & Mathlib</p>
+        </div>
+    </footer>
+
+    <!-- Global Javascript -->
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

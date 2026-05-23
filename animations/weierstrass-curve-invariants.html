@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weierstrass Curve Invariants Concept Animation</title>
+    <style>
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a24;
+            --text-secondary: #495057;
+            --border-color: #e9ecef;
+            --accent-color: #4c6ef5;
+            --color-a: #4c6ef5;
+            --color-b: #0ca678;
+            --color-ab: #e8590c;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0b0c10;
+            --bg-card: #12131a;
+            --text-primary: #f8f9fa;
+            --text-secondary: #ced4da;
+            --border-color: #242731;
+            --accent-color: #5c7cfa;
+            --color-a: #5c7cfa;
+            --color-b: #20c997;
+            --color-ab: #ff922b;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            width: 260px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 0;
+        }
+
+        .value-display {
+            font-family: monospace;
+            font-weight: normal;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 4px 0;
+        }
+
+        .math-display {
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .math-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .math-row.highlight {
+            font-weight: bold;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 6px;
+            margin-top: 4px;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .tooltip {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-a);"></span>
+            <span>Weierstrass Curve E: y² = x³ + Ax + B</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-b);"></span>
+            <span>Tangent Line at P</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-ab);"></span>
+            <span>Doubled Point 2P = P * P</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="animationCanvas"></canvas>
+            <div class="tooltip">Drag to pan. Click on the curve to set point P.</div>
+        </div>
+
+        <div class="controls">
+            <div class="title">Curve Parameters</div>
+            <div class="control-group">
+                <label>Coefficient A <span class="value-display" id="val-a">-1.0</span></label>
+                <input type="range" id="slide-a" min="-3.0" max="3.0" step="0.05" value="-1.5">
+            </div>
+            <div class="control-group">
+                <label>Coefficient B <span class="value-display" id="val-b">1.0</span></label>
+                <input type="range" id="slide-b" min="-3.0" max="3.0" step="0.05" value="1.0">
+            </div>
+
+            <div class="divider"></div>
+
+            <button class="btn" id="btn-animate">Toggle Point Animation</button>
+
+            <div class="divider"></div>
+
+            <div class="title">Algebraic Invariants</div>
+            <div class="math-display">
+                <div class="math-row">
+                    <span>c₄ = -48 A</span>
+                    <span class="value-display" id="c4-val">0.0</span>
+                </div>
+                <div class="math-row">
+                    <span>c₆ = -864 B</span>
+                    <span class="value-display" id="c6-val">0.0</span>
+                </div>
+                <div class="math-row">
+                    <span>Discriminant Δ</span>
+                    <span class="value-display" id="delta-val">0.0</span>
+                </div>
+                <div class="math-row">
+                    <span>j-invariant</span>
+                    <span class="value-display" id="j-val">0.0</span>
+                </div>
+                <div class="math-row highlight">
+                    <span>Curve Status</span>
+                    <span class="value-display" id="status-val" style="color: var(--accent-color);">Smooth</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width = 0;
+        let height = 0;
+        let scale = 60; // Pixels per unit
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        // Curve coefficients
+        let A = -1.5;
+        let B = 1.0;
+
+        // Animated Point state
+        let isAnimating = true;
+        let animTheta = 0.0;
+        let ptP = { x: 0, y: 0, valid: false };
+
+        const slideA = document.getElementById('slide-a');
+        const slideB = document.getElementById('slide-b');
+        const btnAnimate = document.getElementById('btn-animate');
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            const dpr = window.devicePixelRatio || 1;
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('DOMContentLoaded', () => {
+            resize();
+            window.parent.postMessage({ requestTheme: true }, '*');
+        });
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+
+        function updateInputs() {
+            A = parseFloat(slideA.value);
+            B = parseFloat(slideB.value);
+            document.getElementById('val-a').innerText = A.toFixed(2);
+            document.getElementById('val-b').innerText = B.toFixed(2);
+            calculateInvariants();
+            if (!isAnimating) {
+                revalidatePointP();
+            }
+            draw();
+        }
+
+        slideA.addEventListener('input', updateInputs);
+        slideB.addEventListener('input', updateInputs);
+
+        btnAnimate.addEventListener('click', () => {
+            isAnimating = !isAnimating;
+            if (isAnimating) {
+                btnAnimate.innerText = "Disable Point Animation";
+            } else {
+                btnAnimate.innerText = "Enable Point Animation";
+                revalidatePointP();
+            }
+        });
+
+        function getRoots(A, B) {
+            const disc = -4 * A*A*A - 27 * B*B;
+            const roots = [];
+            
+            // Numerical root finder for x^3 + Ax + B = 0
+            // Since we know the analytic properties, let's use cardan/trig methods
+            if (disc > 0) {
+                // 3 real roots
+                const phi = Math.acos(-B / 2 * Math.sqrt(-27 / (A*A*A)));
+                const r1 = 2 * Math.sqrt(-A / 3) * Math.cos(phi / 3);
+                const r2 = 2 * Math.sqrt(-A / 3) * Math.cos((phi + 2 * Math.PI) / 3);
+                const r3 = 2 * Math.sqrt(-A / 3) * Math.cos((phi + 4 * Math.PI) / 3);
+                roots.push(r1, r2, r3);
+                roots.sort((a, b) => a - b);
+            } else if (disc === 0) {
+                // Double/triple root
+                if (A === 0) {
+                    roots.push(0);
+                } else {
+                    const r1 = (3 * B) / A;
+                    const r2 = (-3 * B) / (2 * A);
+                    roots.push(r1, r2);
+                    roots.sort((a, b) => a - b);
+                }
+            } else {
+                // 1 real root
+                const check = (B*B)/4 + (A*A*A)/27;
+                const sqrtCheck = Math.sqrt(check);
+                const u = Math.cbrt(-B/2 + sqrtCheck);
+                const v = Math.cbrt(-B/2 - sqrtCheck);
+                roots.push(u + v);
+            }
+            return { disc, roots };
+        }
+
+        function calculateInvariants() {
+            const c4 = -48 * A;
+            const c6 = -864 * B;
+            const delta = -64 * A*A*A - 432 * B*B;
+            
+            let jVal = "∞";
+            if (Math.abs(delta) > 1e-6) {
+                jVal = ( (c4*c4*c4) / delta ).toFixed(2);
+            }
+
+            document.getElementById('c4-val').innerText = c4.toFixed(1);
+            document.getElementById('c6-val').innerText = c6.toFixed(1);
+            document.getElementById('delta-val').innerText = delta.toFixed(2);
+            document.getElementById('j-val').innerText = jVal;
+
+            let status = "Smooth (1 Component)";
+            if (delta > 0) {
+                status = "Smooth (2 Components)";
+            } else if (Math.abs(delta) < 1e-4) {
+                if (Math.abs(A) < 1e-4) {
+                    status = "Singular Cusp";
+                } else {
+                    status = "Singular Node";
+                }
+            }
+            document.getElementById('status-val').innerText = status;
+        }
+
+        function revalidatePointP() {
+            // Pick a valid x coordinate and compute y
+            const { roots } = getRoots(A, B);
+            let targetX = 0;
+            if (roots.length === 3) {
+                targetX = (roots[1] + roots[2]) / 2; // on the right component
+            } else {
+                targetX = roots[0] + 1;
+            }
+            const y2 = targetX*targetX*targetX + A*targetX + B;
+            ptP.x = targetX;
+            ptP.y = y2 > 0 ? Math.sqrt(y2) : 0;
+            ptP.valid = y2 >= 0;
+        }
+
+        function drawCurveSegment(xStart, xEnd) {
+            ctx.beginPath();
+            let first = true;
+            const steps = 150;
+            
+            // Draw top half
+            for (let i = 0; i <= steps; i++) {
+                const x = xStart + (xEnd - xStart) * (i / steps);
+                const y2 = x*x*x + A*x + B;
+                if (y2 >= 0) {
+                    const y = Math.sqrt(y2);
+                    const cx = width / 2 + offsetX + x * scale;
+                    const cy = height / 2 + offsetY - y * scale;
+                    if (first) {
+                        ctx.moveTo(cx, cy);
+                        first = false;
+                    } else {
+                        ctx.lineTo(cx, cy);
+                    }
+                }
+            }
+
+            // Draw bottom half (backwards to connect smoothly at xStart/xEnd)
+            for (let i = steps; i >= 0; i--) {
+                const x = xStart + (xEnd - xStart) * (i / steps);
+                const y2 = x*x*x + A*x + B;
+                if (y2 >= 0) {
+                    const y = -Math.sqrt(y2);
+                    const cx = width / 2 + offsetX + x * scale;
+                    const cy = height / 2 + offsetY - y * scale;
+                    ctx.lineTo(cx, cy);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawCurve() {
+            const { roots } = getRoots(A, B);
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
+            ctx.lineWidth = 2.5;
+
+            // X viewport boundaries
+            const xMin = (-width / 2 - offsetX) / scale;
+            const xMax = (width / 2 - offsetX) / scale;
+
+            if (roots.length === 3) {
+                // Loop component between roots[0] and roots[1]
+                drawCurveSegment(roots[0], roots[1]);
+                // Branch component from roots[2] to xMax
+                drawCurveSegment(roots[2], Math.max(roots[2], xMax));
+            } else if (roots.length === 2) {
+                // Singular node or multiple root
+                drawCurveSegment(roots[0], Math.max(roots[0], xMax));
+                drawCurveSegment(roots[1], Math.max(roots[1], xMax));
+            } else {
+                // Single root, single branch component
+                drawCurveSegment(roots[0], Math.max(roots[0], xMax));
+            }
+        }
+
+        function drawGrid() {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1;
+
+            const startX = (offsetX % scale) - scale;
+            const startY = (offsetY % scale) - scale;
+
+            for (let x = startX; x < width; x += scale) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+
+            for (let y = startY; y < height; y += scale) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#868e96';
+            ctx.lineWidth = 1.5;
+            
+            // Y Axis
+            ctx.beginPath();
+            ctx.moveTo(width / 2 + offsetX, 0);
+            ctx.lineTo(width / 2 + offsetX, height);
+            ctx.stroke();
+
+            // X Axis
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2 + offsetY);
+            ctx.lineTo(width, height / 2 + offsetY);
+            ctx.stroke();
+        }
+
+        function drawPointMath() {
+            if (!ptP.valid) return;
+
+            // Calculate tangent slope: m = (3x² + A) / 2y
+            // If y is 0, vertical tangent
+            let m = 0;
+            let isVertical = false;
+            if (Math.abs(ptP.y) < 1e-4) {
+                isVertical = true;
+            } else {
+                m = (3 * ptP.x * ptP.x + A) / (2 * ptP.y);
+            }
+
+            // Draw Tangent Line
+            ctx.save();
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-b');
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            
+            if (isVertical) {
+                const cx = width / 2 + offsetX + ptP.x * scale;
+                ctx.beginPath();
+                ctx.moveTo(cx, 0);
+                ctx.lineTo(cx, height);
+                ctx.stroke();
+            } else {
+                // Line y - py = m (x - px)  =>  y = m x + (py - m px)
+                const xMin = (-width / 2 - offsetX) / scale;
+                const xMax = (width / 2 - offsetX) / scale;
+                
+                const yStart = m * (xMin - ptP.x) + ptP.y;
+                const yEnd = m * (xMax - ptP.x) + ptP.y;
+
+                ctx.beginPath();
+                ctx.moveTo(width / 2 + offsetX + xMin * scale, height / 2 + offsetY - yStart * scale);
+                ctx.lineTo(width / 2 + offsetX + xMax * scale, height / 2 + offsetY - yEnd * scale);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Draw point P
+            const cxP = width / 2 + offsetX + ptP.x * scale;
+            const cyP = height / 2 + offsetY - ptP.y * scale;
+            ctx.beginPath();
+            ctx.arc(cxP, cyP, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-a');
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Label P
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+            ctx.font = "12px sans-serif";
+            ctx.fillText("P", cxP + 10, cyP - 10);
+
+            // Compute doubling point 2P
+            // x_2P = m^2 - 2x_p
+            // y_2P = -m(x_2P - x_p) - y_p
+            if (!isVertical) {
+                const x2P = m*m - 2*ptP.x;
+                const y2P = -m*(x2P - ptP.x) - ptP.y;
+
+                const cx2P = width / 2 + offsetX + x2P * scale;
+                const cy2P = height / 2 + offsetY - y2P * scale;
+
+                // Draw doubled point 2P
+                ctx.beginPath();
+                ctx.arc(cx2P, cy2P, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-ab');
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Label 2P
+                ctx.fillText("2P", cx2P + 10, cy2P - 10);
+
+                // Draw line connection between intersection point (x2P, -y2P) and 2P
+                ctx.save();
+                ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.moveTo(cx2P, cy2P);
+                ctx.lineTo(cx2P, height / 2 + offsetY - (-y2P) * scale);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function updateAnimation() {
+            if (isAnimating) {
+                animTheta += 0.01;
+                // Move x on the curve
+                const { roots } = getRoots(A, B);
+                let x = 0;
+                
+                if (roots.length === 3) {
+                    // Oscillate on loop component or branch component
+                    const period = Math.sin(animTheta);
+                    if (period > 0) {
+                        x = roots[2] + 0.1 + (1.0 - Math.cos(animTheta)) * 1.5;
+                    } else {
+                        x = roots[0] + (roots[1] - roots[0]) * (0.5 + 0.5 * Math.sin(animTheta * 2));
+                    }
+                } else {
+                    x = roots[0] + 0.1 + (1.0 - Math.cos(animTheta)) * 2.0;
+                }
+
+                const y2 = x*x*x + A*x + B;
+                if (y2 >= 0) {
+                    ptP.x = x;
+                    ptP.y = Math.sqrt(y2) * (Math.sin(animTheta * 3) >= 0 ? 1 : -1);
+                    ptP.valid = true;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+            drawCurve();
+            drawPointMath();
+        }
+
+        // Animation Loop
+        function loop() {
+            updateAnimation();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Dragging and Panning
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX - offsetX;
+            startY = e.clientY - offsetY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            offsetX = e.clientX - startX;
+            offsetY = e.clientY - startY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Click to set P
+        canvas.addEventListener('click', (e) => {
+            if (isDragging) return;
+            // Get click in math coordinates
+            const rect = canvas.getBoundingClientRect();
+            const clickX = ((e.clientX - rect.left) - width / 2 - offsetX) / scale;
+            
+            // Find closest x on curve
+            let bestX = clickX;
+            let bestY = 0;
+            let bestDist = Infinity;
+
+            // Search range near click
+            for (let dx = -1.0; dx <= 1.0; dx += 0.01) {
+                const x = clickX + dx;
+                const y2 = x*x*x + A*x + B;
+                if (y2 >= 0) {
+                    const yVal = Math.sqrt(y2);
+                    // Check positive y
+                    let dist = Math.hypot(x - clickX, yVal - (((height / 2 + offsetY) - (e.clientY - rect.top)) / scale));
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestX = x;
+                        bestY = yVal;
+                    }
+                    // Check negative y
+                    dist = Math.hypot(x - clickX, -yVal - (((height / 2 + offsetY) - (e.clientY - rect.top)) / scale));
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestX = x;
+                        bestY = -yVal;
+                    }
+                }
+            }
+
+            if (bestDist < 1.0) {
+                isAnimating = false;
+                btnAnimate.innerText = "Enable Point Animation";
+                ptP.x = bestX;
+                ptP.y = bestY;
+                ptP.valid = true;
+            }
+        });
+
+        // Start
+        calculateInvariants();
+        revalidatePointP();
+        loop();
+    </script>
+</body>
+</html>

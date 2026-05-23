@@ -39,6 +39,21 @@
     <main class="container">
         <div class="catalog-grid" id="catalog-grid">
             
+            <!-- Unimodal Rearrangement Card -->
+            <article class="theorem-card" data-category="combinatorics" data-keywords="unimodal permutation rearrangement optimality longest increasing subsequence lis hamming distance algorithm" onclick="location.href='theorems/unimodal-rearrangement-optimality.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/unimodal_rearrangement_optimality_illustration.png');">
+                    <span class="card-badge combinatorics">Combinatorics</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Unimodal Rearrangement Optimality</h3>
+                    <p class="card-desc">Proves the correctness and optimality of an $O(n \log n)$ algorithm to compute the minimum Hamming distance from any permutation to the set of unimodal permutations, using a 2D grid projection and LIS chain matching.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.ProgramVerification</span>
+                        <a href="theorems/unimodal-rearrangement-optimality.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
             <!-- Caro-Wei Card -->
             <article class="theorem-card" data-category="combinatorics" data-keywords="caro wei independence number graph degrees sum reciprocal" onclick="location.href='theorems/caro-wei.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/caro_wei_illustration.png');">
@@ -69,6 +84,21 @@
                 </div>
             </article>
 
+            <!-- Rouché's Theorem Card -->
+            <article class="theorem-card" data-category="topology" data-keywords="rouche zero count complex analysis winding number holomorphy meromorphic contour integral" onclick="location.href='theorems/rouche-zero-count-eq.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/rouche_zero_count_eq_illustration.png');">
+                    <span class="card-badge topology">Topology</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Rouché's Theorem</h3>
+                    <p class="card-desc">Proves that two complex functions whose difference is bounded by one of them on a boundary contour have the same number of zeros inside, using contour deformation.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Analysis.Complex</span>
+                        <a href="theorems/rouche-zero-count-eq.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
             <!-- Non-Isotopic Links Card -->
             <article class="theorem-card" data-category="topology" data-keywords="link theory topology isotopy hopf link trivial link contractible complement" onclick="location.href='theorems/exists-nonisotopic-link.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/exists_nonisotopic_link_illustration.png');">
@@ -80,6 +110,21 @@
                     <div class="card-footer">
                         <span class="card-meta">Mathlib.KnotTheory</span>
                         <a href="theorems/exists-nonisotopic-link.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Cauchy Sequence of Irreducible Space Card -->
+            <article class="theorem-card" data-category="topology" data-keywords="topology metric space pseudometric space irreducible space cauchy sequence open ball dense set intersection" onclick="location.href='theorems/cauchy-seq-of-irreducible-space.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/cauchy_seq_of_irreducible_space_illustration.png');">
+                    <span class="card-badge topology">Topology</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Cauchy Sequence of Irreducible Space</h3>
+                    <p class="card-desc">Proves that every sequence in an irreducible pseudometric space is Cauchy, because all nonempty open balls must intersect, forcing pairwise distances below any threshold.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Topology.MetricSpace</span>
+                        <a href="theorems/cauchy-seq-of-irreducible-space.html" class="card-link">View Proof &rarr;</a>
                     </div>
                 </div>
             </article>
@@ -114,6 +159,21 @@
                 </div>
             </article>
 
+            <!-- Cardinality of Finite Boolean Algebras Card -->
+            <article class="theorem-card" data-category="algebra" data-keywords="algebra boolean algebra poset lattice atom cardinality finite set bijection subset" onclick="location.href='theorems/card-finite-boolean-algebra-eq-two-pow-card-atoms.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/card_finite_boolean_algebra_eq_two_pow_card_atoms_illustration.png');">
+                    <span class="card-badge algebra">Algebra</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Cardinality of Finite Boolean Algebras</h3>
+                    <p class="card-desc">Proves that the size of any finite Boolean algebra is exactly $2^k$, where $k$ is the number of atoms, by establishing a bijection with the power set of atoms.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Order.BooleanAlgebra</span>
+                        <a href="theorems/card-finite-boolean-algebra-eq-two-pow-card-atoms.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
             <!-- Weierstrass Curve Invariants Card -->
             <article class="theorem-card" data-category="algebra" data-keywords="weierstrass curve invariants j-invariant c4 c6 discriminant elliptic curves algebra unit nilpotent" onclick="location.href='theorems/weierstrass-curve-invariants.html'">
                 <div class="card-thumbnail" style="background-image: url('assets/images/weierstrass_curve_invariants_illustration.png');">
@@ -140,6 +200,21 @@
                     <div class="card-footer">
                         <span class="card-meta">Mathlib.GroupTheory</span>
                         <a href="theorems/commutator-sup-eq-of-normal.html" class="card-link">View Proof &rarr;</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Uniform Distribution on ZMod p Units Card -->
+            <article class="theorem-card" data-category="algebra" data-keywords="algebra probability units zmod prime measure uniform distribution number theory" onclick="location.href='theorems/uniform-of-fintype-to-outer-measure-units.html'">
+                <div class="card-thumbnail" style="background-image: url('assets/images/uniform_of_fintype_to_outer_measure_units_illustration.png');">
+                    <span class="card-badge algebra">Algebra</span>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">Uniform Distribution on ZMod p Units</h3>
+                    <p class="card-desc">Proves that the uniform distribution on the cyclic ring $\mathbb{Z}/p\mathbb{Z}$ (for prime $p$) assigns a probability measure of exactly $(p-1)/p$ to the set of units. The proof highlights that every non-zero element in a prime field is invertible.</p>
+                    <div class="card-footer">
+                        <span class="card-meta">Mathlib.Probability</span>
+                        <a href="theorems/uniform-of-fintype-to-outer-measure-units.html" class="card-link">View Proof &rarr;</a>
                     </div>
                 </div>
             </article>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unimodal Rearrangement Optimality Theorem Animation</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #f1f3f5;
+            --node-border: #ced4da;
+            --grid-line: #e9ecef;
+            --left-color: #f76707; /* Orange for left / odd points */
+            --right-color: #12b886; /* Teal for right / even points */
+            --matched-color: #4c6ef5; /* Blue for LIS / matched elements */
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #1b1d26;
+            --node-border: #343a40;
+            --grid-line: #1b1d26;
+            --left-color: #fcc419; /* Yellow-orange in dark mode */
+            --right-color: #20c997; /* Emerald in dark mode */
+            --matched-color: #5c7cfa; /* Indigo-blue in dark mode */
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 280px;
+            width: calc(30% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            z-index: 10;
+            font-size: 13px;
+        }
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+        }
+        .stat-line {
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .explanation-box {
+            background: var(--node-default);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: var(--text-color);
+            opacity: 0.9;
+        }
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        button {
+            flex: 1;
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 0;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        button.sec {
+            background: var(--node-default);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Unimodal Optimality</div>
+        
+        <div class="stat-line"><span>Array Size (n):</span><span class="stat-val">8</span></div>
+        <div class="stat-line"><span>Phase:</span><span class="stat-val" id="phase-name" style="color: var(--accent);">Input Array</span></div>
+        <div class="stat-line"><span>LIS Chain Length:</span><span class="stat-val" id="lis-len">0</span></div>
+        <div class="stat-line"><span>Min Differences:</span><span class="stat-val" id="min-diff" style="color: var(--matched-color);">0</span></div>
+        
+        <div class="explanation-box" id="explanation">
+            We start with a random permutation array of size 8. To find the optimal unimodal permutation with minimum Hamming distance, we map each element to 2D coordinates.
+        </div>
+
+        <div class="btn-group">
+            <button id="btn-step" onclick="step()">Next Step</button>
+            <button id="btn-auto" class="sec" onclick="toggleAuto()">Auto</button>
+            <button id="btn-reset" class="sec" onclick="resetStats()">New Perm</button>
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let n = 8;
+        let arr = [];
+        let points = [];
+        let sortedPoints = [];
+        let lisPoints = [];
+        let reconstructedArr = [];
+        let matchingPairs = [];
+        let leftPairs = [];
+        let rightPairs = [];
+        
+        // Visualization states
+        let stepPhase = 0; // 0: Input, 1: 2D Projection, 2: LIS highlight, 3: Reconstruction
+        let isAuto = false;
+        let autoInterval = null;
+        
+        // Dynamic positioning for animation
+        let elements = []; // bars
+        let gridPoints = []; // 2D points
+        
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        // Request theme from parent on load
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function initData() {
+            // Generate a random permutation of [1..8]
+            arr = Array.from({ length: n }, (_, i) => i + 1);
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            
+            // Compute the 2D projected points
+            points = [];
+            // Part 1: i + 1 <= a (Odd X, Even Y)
+            for (let i = 0; i < n; i++) {
+                const a = arr[i];
+                if (i + 1 <= a) {
+                    points.push({
+                        x: 2 * i + 1,
+                        y: 2 * (a - i - 1),
+                        origIdx: i,
+                        val: a,
+                        type: 'left'
+                    });
+                }
+            }
+            // Part 2: n <= a + i (Even X, Odd Y)
+            for (let i = 0; i < n; i++) {
+                const a = arr[i];
+                if (n <= a + i) {
+                    points.push({
+                        x: 2 * (a + i - n),
+                        y: 2 * (n - i) - 1,
+                        origIdx: i,
+                        val: a,
+                        type: 'right'
+                    });
+                }
+            }
+            
+            // Sort points lexicographically
+            sortedPoints = [...points].sort((a, b) => {
+                if (a.x !== b.x) return a.x - b.x;
+                return a.y - b.y;
+            });
+            
+            // Compute LIS of sortedPoints under non-decreasing x, y, and strictly increasing origIdx, val
+            lisPoints = [];
+            if (sortedPoints.length > 0) {
+                const dp = Array(sortedPoints.length).fill(1);
+                const parent = Array(sortedPoints.length).fill(-1);
+                
+                for (let i = 0; i < sortedPoints.length; i++) {
+                    for (let j = 0; j < i; j++) {
+                        const pi = sortedPoints[i];
+                        const pj = sortedPoints[j];
+                        if (pj.x <= pi.x && pj.y <= pi.y && pj.origIdx < pi.origIdx && pj.val < pi.val) {
+                            if (dp[j] + 1 > dp[i]) {
+                                dp[i] = dp[j] + 1;
+                                parent[i] = j;
+                            }
+                        }
+                    }
+                }
+                
+                let maxIdx = 0;
+                for (let i = 1; i < sortedPoints.length; i++) {
+                    if (dp[i] > dp[maxIdx]) {
+                        maxIdx = i;
+                    }
+                }
+                
+                let curr = maxIdx;
+                while (curr !== -1) {
+                    lisPoints.push(sortedPoints[curr]);
+                    curr = parent[curr];
+                }
+                lisPoints.reverse();
+            }
+            
+            // Build Reconstruction
+            const matchedIndices = lisPoints.map(p => p.origIdx);
+            const matchedValues = lisPoints.map(p => p.val);
+            const unusedIndices = Array.from({ length: n }, (_, i) => i).filter(i => !matchedIndices.includes(i));
+            const unusedValues = Array.from({ length: n }, (_, i) => i + 1).filter(v => !matchedValues.includes(v));
+            
+            // Compute peak (n / 2)
+            const peak = Math.floor(n / 2);
+            const unusedLeft = unusedIndices.filter(i => i < peak);
+            const unusedRight = unusedIndices.filter(i => i >= peak);
+            const k = unusedLeft.length;
+            
+            const unusedLeftVals = unusedValues.slice(0, k);
+            const unusedRightVals = unusedValues.slice(k).reverse();
+            
+            matchingPairs = lisPoints.map(p => ({ idx: p.origIdx, val: p.val, type: 'matched' }));
+            leftPairs = unusedLeft.map((idx, index) => ({ idx: idx, val: unusedLeftVals[index], type: 'left_fill' }));
+            rightPairs = unusedRight.map((idx, index) => ({ idx: idx, val: unusedRightVals[index], type: 'right_fill' }));
+            
+            const allPairs = [...matchingPairs, ...leftPairs, ...rightPairs].sort((a, b) => a.idx - b.idx);
+            reconstructedArr = allPairs.map(p => p.val);
+            
+            // Set up elements and animations
+            elements = arr.map((val, idx) => ({
+                val: val,
+                idx: idx,
+                heightPercent: val / n,
+                currentHeightPercent: val / n,
+                color: 'var(--accent)',
+                label: val.toString()
+            }));
+            
+            gridPoints = points.map(p => ({
+                ...p,
+                scaleX: 0,
+                scaleY: 0,
+                targetScaleX: p.x / (2 * n),
+                targetScaleY: p.y / (2 * n),
+                opacity: 0,
+                isLIS: lisPoints.some(lp => lp.x === p.x && lp.y === p.y)
+            }));
+        }
+
+        function step() {
+            stepPhase = (stepPhase + 1) % 4;
+            updatePhaseUI();
+            draw();
+        }
+
+        function toggleAuto() {
+            isAuto = !isAuto;
+            const btn = document.getElementById('btn-auto');
+            if (isAuto) {
+                btn.textContent = "Pause";
+                btn.classList.remove('sec');
+                autoInterval = setInterval(step, 2500);
+                step();
+            } else {
+                btn.textContent = "Auto";
+                btn.classList.add('sec');
+                clearInterval(autoInterval);
+            }
+        }
+
+        function resetStats() {
+            stepPhase = 0;
+            initData();
+            updatePhaseUI();
+            draw();
+        }
+
+        function updatePhaseUI() {
+            const phaseName = document.getElementById('phase-name');
+            const explanation = document.getElementById('explanation');
+            const lisLen = document.getElementById('lis-len');
+            const minDiff = document.getElementById('min-diff');
+            
+            lisLen.textContent = lisPoints.length;
+            minDiff.textContent = n - lisPoints.length;
+            
+            switch (stepPhase) {
+                case 0:
+                    phaseName.textContent = "1. Input Permutation";
+                    phaseName.style.color = "var(--text-color)";
+                    explanation.textContent = "We start with a random permutation array of size n = 8. It contains values 1 to 8 in arbitrary order. The height of each bar represents its value.";
+                    break;
+                case 1:
+                    phaseName.textContent = "2. 2D Coordinate Projection";
+                    phaseName.style.color = "var(--left-color)";
+                    explanation.textContent = "Each element (arr[i] = a) is mapped to 2D coordinates: (2i + 1, 2(a - i - 1)) if i+1 <= a (Orange/Yellow nodes), or (2(a + i - n), 2(n - i) - 1) if n <= a + i (Teal/Green nodes). Elements can map to both.";
+                    break;
+                case 2:
+                    phaseName.textContent = "3. LIS Chain Extraction";
+                    phaseName.style.color = "var(--accent)";
+                    explanation.textContent = "We find the Longest Increasing Subsequence (LIS) on the mapped 2D coordinate grid. The selected chain of nodes (highlighted in Blue) represents elements that can remain UNCHANGED.";
+                    break;
+                case 3:
+                    phaseName.textContent = "4. Optimal Reconstructed Peak";
+                    phaseName.style.color = "var(--right-color)";
+                    explanation.textContent = "We keep the LIS matched elements in place. The remaining spots are filled with unused values: smaller values on the left (ascending), larger values on the right (descending) to produce the optimal unimodal permutation.";
+                    break;
+            }
+        }
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            // Styling vars
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const accent = styles.getPropertyValue('--accent').trim();
+            const borderCol = styles.getPropertyValue('--border-color').trim();
+            const gridLineCol = styles.getPropertyValue('--grid-line').trim();
+            const leftCol = styles.getPropertyValue('--left-color').trim();
+            const rightCol = styles.getPropertyValue('--right-color').trim();
+            const matchedCol = styles.getPropertyValue('--matched-color').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+            const nodeBorder = styles.getPropertyValue('--node-border').trim();
+            
+            const clearSpace = w > 600 ? 300 : 0;
+            const activeWidth = w - clearSpace - 40;
+            
+            // --- TOP PORTION: Array / Permutation Bars ---
+            const arrayY = 40;
+            const arrayHeight = Math.max(h * 0.28, 120);
+            const barSpacing = 12;
+            const totalBarsWidth = activeWidth - 40;
+            const barWidth = Math.min((totalBarsWidth - (barSpacing * (n - 1))) / n, 60);
+            const startX = clearSpace + 20 + (totalBarsWidth - (n * barWidth + (n - 1) * barSpacing)) / 2;
+            
+            // Title for top portion
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 13px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(stepPhase === 3 ? "Reconstructed Unimodal Permutation" : "Current Array Permutation", startX, arrayY);
+            
+            // Draw Bars
+            for (let i = 0; i < n; i++) {
+                const x = startX + i * (barWidth + barSpacing);
+                const currentVal = stepPhase === 3 ? reconstructedArr[i] : arr[i];
+                const height = (currentVal / n) * (arrayHeight - 30);
+                const y = arrayY + arrayHeight - height;
+                
+                // Color bar depending on state and phase
+                let barColor = 'var(--node-default)';
+                let isMatched = lisPoints.some(lp => lp.origIdx === i && lp.val === arr[i]);
+                
+                if (stepPhase === 0) {
+                    barColor = accent;
+                } else if (stepPhase === 1 || stepPhase === 2) {
+                    if (isMatched && stepPhase === 2) {
+                        barColor = matchedCol;
+                    } else {
+                        barColor = 'rgba(76, 110, 245, 0.15)'; // dimmed default
+                    }
+                } else if (stepPhase === 3) {
+                    // Check if this position is a matched position
+                    const isRecMatched = matchingPairs.some(p => p.idx === i);
+                    if (isRecMatched) {
+                        barColor = matchedCol;
+                    } else {
+                        barColor = rightCol; // Green/teal for filled
+                    }
+                }
+                
+                ctx.fillStyle = barColor;
+                ctx.beginPath();
+                ctx.roundRect(x, y, barWidth, height, [6, 6, 0, 0]);
+                ctx.fill();
+                
+                // Draw bar border
+                ctx.strokeStyle = stepPhase === 0 ? accent : (isMatched && stepPhase === 2 ? matchedCol : borderCol);
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Label value inside/above bar
+                ctx.fillStyle = (barColor === 'var(--node-default)' || barColor === 'rgba(76, 110, 245, 0.15)') ? textColor : '#ffffff';
+                ctx.font = "bold 12px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(currentVal.toString(), x + barWidth / 2, y + 16);
+                
+                // Draw index below bar
+                ctx.fillStyle = textColor;
+                ctx.font = "9px monospace";
+                ctx.fillText(`i=${i}`, x + barWidth / 2, arrayY + arrayHeight + 14);
+            }
+            
+            // --- BOTTOM PORTION: 2D Grid Plot ---
+            if (stepPhase > 0) {
+                const gridY = arrayY + arrayHeight + 50;
+                const gridHeight = h - gridY - 40;
+                const gridWidth = Math.min(gridHeight * 1.2, activeWidth - 40);
+                const gridStartX = startX + (activeWidth - 40 - gridWidth) / 2;
+                
+                // Draw Grid Background & Axes
+                ctx.strokeStyle = gridLineCol;
+                ctx.lineWidth = 1;
+                
+                // Grid lines (2n x 2n grid)
+                const gridCells = 2 * n;
+                const cellW = gridWidth / gridCells;
+                const cellH = gridHeight / gridCells;
+                
+                for (let i = 0; i <= gridCells; i++) {
+                    // Vertical lines
+                    ctx.beginPath();
+                    ctx.moveTo(gridStartX + i * cellW, gridY);
+                    ctx.lineTo(gridStartX + i * cellW, gridY + gridHeight);
+                    ctx.stroke();
+                    
+                    // Horizontal lines
+                    ctx.beginPath();
+                    ctx.moveTo(gridStartX, gridY + i * cellH);
+                    ctx.lineTo(gridStartX + gridWidth, gridY + i * cellH);
+                    ctx.stroke();
+                }
+                
+                // Axes Labels
+                ctx.fillStyle = textColor;
+                ctx.font = "bold 10px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("X = 2n (decreasing) / 2i+1 (increasing) →", gridStartX + gridWidth / 2, gridY + gridHeight + 20);
+                
+                ctx.save();
+                ctx.translate(gridStartX - 24, gridY + gridHeight / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText("← Y = 2(a-i-1) (left) / 2(n-i)-1 (right)", 0, 0);
+                ctx.restore();
+                
+                // Draw coordinate ticks on Axes
+                ctx.font = "8px monospace";
+                ctx.textAlign = "center";
+                for (let i = 0; i <= gridCells; i += 2) {
+                    ctx.fillText(i.toString(), gridStartX + i * cellW, gridY + gridHeight + 10);
+                    ctx.fillText(i.toString(), gridStartX - 10, gridY + gridHeight - i * cellH + 3);
+                }
+                
+                // Draw LIS path connection
+                if (stepPhase >= 2 && lisPoints.length > 1) {
+                    ctx.strokeStyle = matchedCol;
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = matchedCol;
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    lisPoints.forEach((lp, idx) => {
+                        const px = gridStartX + lp.x * cellW;
+                        const py = gridY + gridHeight - lp.y * cellH;
+                        if (idx === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    });
+                    ctx.stroke();
+                    ctx.shadowBlur = 0; // reset
+                }
+                
+                // Draw Points
+                gridPoints.forEach(p => {
+                    const px = gridStartX + p.x * cellW;
+                    const py = gridY + gridHeight - p.y * cellH;
+                    const radius = p.isLIS && stepPhase >= 2 ? 8 : 6;
+                    
+                    ctx.beginPath();
+                    ctx.arc(px, py, radius, 0, 2 * Math.PI);
+                    
+                    // Determine Color
+                    let ptColor = p.type === 'left' ? leftCol : rightCol;
+                    if (stepPhase >= 2) {
+                        if (p.isLIS) {
+                            ptColor = matchedCol;
+                            ctx.shadowColor = matchedCol;
+                            ctx.shadowBlur = 15;
+                        } else {
+                            ptColor = 'rgba(128, 128, 128, 0.2)'; // dimmed out
+                        }
+                    }
+                    
+                    ctx.fillStyle = ptColor;
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // reset shadow
+                    
+                    ctx.strokeStyle = p.isLIS && stepPhase >= 2 ? '#ffffff' : nodeBorder;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    
+                    // Point Label (Value, Index)
+                    if (stepPhase === 1 || (stepPhase >= 2 && p.isLIS)) {
+                        ctx.fillStyle = textColor;
+                        ctx.font = "bold 9px sans-serif";
+                        ctx.textAlign = "left";
+                        ctx.fillText(` (${p.x},${p.y})[a=${p.val}]`, px + radius + 2, py + 3);
+                    }
+                });
+            }
+        }
+
+        // Initialize
+        initData();
+        resize();
+    </script>
+</body>
+</html>

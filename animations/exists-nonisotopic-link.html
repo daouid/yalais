@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Exists Nonisotopic Link - Yalais</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.75);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-glow: rgba(76, 110, 245, 0.1);
+            --purple: #9c36b5;
+            --blue: #0c8599;
+            --orange: #e65f00;
+            --danger: #e03131;
+        }
+        [data-theme="dark"] {
+            --bg-color: #12131a;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.75);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-glow: rgba(92, 124, 250, 0.2);
+            --purple: #da77f2;
+            --blue: #22b8cf;
+            --orange: #fcc419;
+            --danger: #ff6b6b;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 14px 20px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .panel-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .panel-subtitle {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-grow: 1;
+            justify-content: flex-end;
+            max-width: 700px;
+        }
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+            min-width: 200px;
+        }
+        label {
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .value-display {
+            font-size: 11px;
+            font-family: monospace;
+            width: 40px;
+            text-align: right;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+        button:hover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+        button.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .status-banners {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .status-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 16px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+        .status-header {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-desc {
+            font-size: 11px;
+            line-height: 1.4;
+            opacity: 0.8;
+        }
+        .status-pill {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .status-pill.success {
+            background: rgba(12, 133, 153, 0.15);
+            color: var(--blue);
+        }
+        .status-pill.danger {
+            background: rgba(224, 49, 49, 0.15);
+            color: var(--danger);
+        }
+        @media (max-width: 768px) {
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .controls-row {
+                justify-content: space-between;
+                max-width: 100%;
+            }
+            .status-banners {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-left">
+            <div class="panel-title">Link Contraction & Homotopy</div>
+            <div class="panel-subtitle">Trivial Link (L₁) vs Hopf Link (L₂) in R³ \ C</div>
+        </div>
+        <div class="controls-row">
+            <div class="slider-group">
+                <label for="s-slider">Contraction (s):</label>
+                <input type="range" id="s-slider" min="0" max="1" step="0.005" value="0">
+                <span class="value-display" id="s-val">0.00</span>
+            </div>
+            <div class="btn-group">
+                <button id="play-btn">Play</button>
+                <button id="rot-btn" class="active">Rotate</button>
+                <button id="reset-btn">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-banners">
+        <div class="status-card">
+            <div class="status-header">
+                <span>L₁: Trivial Link (Unlinked)</span>
+                <span class="status-pill success" id="l1-pill">Safe (s=0.00)</span>
+            </div>
+            <div class="status-desc" id="l1-desc">
+                The blue circle K₁ lies at z = 2. As s increases, K₁ shrinks smoothly to a point at (0, 0, 2) without ever intersecting the base circle C (z = 0).
+            </div>
+        </div>
+        <div class="status-card">
+            <div class="status-header">
+                <span>L₂: Hopf Link (Linked)</span>
+                <span class="status-pill success" id="l2-pill">Safe (s=0.00)</span>
+            </div>
+            <div class="status-desc" id="l2-desc">
+                The orange circle K₂ is linked with C. As s increases, K₂ shrinks towards the origin. At s = 0.50, it must collide with C at (1, 0, 0)!
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Animation state
+        let s = 0.0; // Contraction parameter [0, 1]
+        let autoRotate = true;
+        let isPlaying = false;
+        let angleX = 0.4;
+        let angleY = -0.6;
+        let isDragging = false;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+
+        // UI Elements
+        const sSlider = document.getElementById('s-slider');
+        const sVal = document.getElementById('s-val');
+        const playBtn = document.getElementById('play-btn');
+        const rotBtn = document.getElementById('rot-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        const l1Pill = document.getElementById('l1-pill');
+        const l1Desc = document.getElementById('l1-desc');
+        const l2Pill = document.getElementById('l2-pill');
+        const l2Desc = document.getElementById('l2-desc');
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        // Event Listeners
+        sSlider.addEventListener('input', (e) => {
+            s = parseFloat(e.target.value);
+            updateUI();
+        });
+
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+            playBtn.classList.toggle('active', isPlaying);
+        });
+
+        rotBtn.addEventListener('click', () => {
+            autoRotate = !autoRotate;
+            rotBtn.classList.toggle('active', autoRotate);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            s = 0;
+            isPlaying = false;
+            playBtn.textContent = 'Play';
+            playBtn.classList.remove('active');
+            updateUI();
+        });
+
+        // Mouse Drag Rotation
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        });
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - prevMouseX;
+            const deltaY = e.clientY - prevMouseY;
+            angleY += deltaX * 0.007;
+            angleX += deltaY * 0.007;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        });
+
+        // Touch Drag Rotation
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                prevMouseX = e.touches[0].clientX;
+                prevMouseY = e.touches[0].clientY;
+            }
+        });
+        window.addEventListener('touchend', () => isDragging = false);
+        canvas.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            const deltaX = e.touches[0].clientX - prevMouseX;
+            const deltaY = e.touches[0].clientY - prevMouseY;
+            angleY += deltaX * 0.007;
+            angleX += deltaY * 0.007;
+            prevMouseX = e.touches[0].clientX;
+            prevMouseY = e.touches[0].clientY;
+        });
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function updateUI() {
+            sSlider.value = s.toFixed(3);
+            sVal.textContent = s.toFixed(2);
+
+            // Update Link 1 status
+            l1Pill.className = "status-pill success";
+            l1Pill.textContent = `Safe (s=${s.toFixed(2)})`;
+            l1Desc.innerHTML = `The blue circle K₁ is at z = 2. At s = ${s.toFixed(2)}, its radius is ${(1-s).toFixed(2)}. It shrinks towards (0, 0, 2) without hitting the purple circle C.`;
+
+            // Update Link 2 status
+            if (s >= 0.5) {
+                l2Pill.className = "status-pill danger";
+                l2Pill.textContent = "INTERSECTION!";
+                l2Desc.innerHTML = `<span style="color: var(--danger); font-weight: bold;">COLLISION at s = 0.50!</span> The contracting orange circle K₂ intersected the base circle C at <span style="font-family: monospace;">(1.00, 0.00, 0.00)</span>. This proves this contraction fails in the complement of C.`;
+            } else {
+                l2Pill.className = "status-pill success";
+                l2Pill.textContent = `Safe (s=${s.toFixed(2)})`;
+                const distToC = (2 * (1 - s) - 1);
+                l2Desc.innerHTML = `The orange circle K₂ is shrinking towards the origin. Its rightmost point is at x = ${(2 * (1 - s)).toFixed(2)}. Distance to base circle C: ${distToC.toFixed(2)} units.`;
+            }
+        }
+
+        // 3D rotation helper
+        function rotate3D(x, y, z, ax, ay) {
+            // Rotate Y
+            const cosY = Math.cos(ay), sinY = Math.sin(ay);
+            let x1 = x * cosY - z * sinY;
+            let z1 = x * sinY + z * cosY;
+            // Rotate X
+            const cosX = Math.cos(ax), sinX = Math.sin(ax);
+            let y2 = y * cosX - z1 * sinX;
+            let z2 = y * sinX + z1 * cosX;
+            return { x: x1, y: y2, z: z2 };
+        }
+
+        // Generate geometry
+        function getBaseCirclePoints() {
+            const pts = [];
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * 2 * Math.PI;
+                pts.push({ x: Math.cos(theta), y: Math.sin(theta), z: 0 });
+            }
+            return pts;
+        }
+
+        function getK1Points(sParam) {
+            const pts = [];
+            const r = 1.0 - sParam;
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * 2 * Math.PI;
+                pts.push({ x: r * Math.cos(theta), y: r * Math.sin(theta), z: 2.0 });
+            }
+            return pts;
+        }
+
+        function getK2Points(sParam) {
+            const pts = [];
+            const r = 1.0 - sParam;
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * 2 * Math.PI;
+                // K2 is (1 + cos t, 0, sin t) scaled by (1 - s)
+                pts.push({ x: r * (1.0 + Math.cos(theta)), y: 0, z: r * Math.sin(theta) });
+            }
+            return pts;
+        }
+
+        function drawScene() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (autoRotate && !isDragging) {
+                angleY += 0.002;
+            }
+
+            // Draw center partition line
+            const styles = getComputedStyle(document.documentElement);
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(w / 2, 0);
+            ctx.lineTo(w / 2, h);
+            ctx.stroke();
+
+            // Set up drawing parameters for left and right
+            const scale = Math.min(w / 4, h) * 0.4;
+            const centerY = h / 2 + 30; // Push down slightly to clear header
+
+            // Render Left side (Link 1 - Trivial)
+            renderViewport(w / 4, centerY, scale, 1);
+
+            // Render Right side (Link 2 - Hopf)
+            renderViewport(3 * w / 4, centerY, scale, 2);
+
+            // Draw labels
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 13px var(--font-sans)';
+            ctx.textAlign = 'center';
+            ctx.fillText("Trivial Link L₁ (Unlinked)", w / 4, 85);
+            ctx.fillText("Hopf Link L₂ (Linked)", 3 * w / 4, 85);
+        }
+
+        function renderViewport(centerX, centerY, scale, linkId) {
+            const list = []; // elements to sort: {type: 'line'|'face'|'point', depth: number, draw: fn}
+
+            // Colors from CSS
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const purpleColor = isDark ? 'rgba(218, 119, 242, 0.85)' : 'rgba(156, 54, 181, 0.85)';
+            const purpleDiskColor = isDark ? 'rgba(218, 119, 242, 0.12)' : 'rgba(156, 54, 181, 0.15)';
+            
+            const blueColor = isDark ? 'rgba(34, 184, 207, 0.9)' : 'rgba(12, 133, 153, 0.9)';
+            const orangeColor = isDark ? 'rgba(252, 196, 25, 0.9)' : 'rgba(230, 95, 0, 0.9)';
+            const redColor = isDark ? 'rgba(255, 107, 107, 1)' : 'rgba(224, 49, 49, 1)';
+
+            // 1. Generate Base Circle C
+            const C_pts_raw = getBaseCirclePoints();
+            const C_pts = C_pts_raw.map(p => {
+                const rot = rotate3D(p.x, p.y, p.z, angleX, angleY);
+                return { x: centerX + rot.x * scale, y: centerY - rot.y * scale, z: rot.z };
+            });
+
+            // Add Base Circle C's border segment by segment to depth sorting list
+            for (let i = 0; i < C_pts.length - 1; i++) {
+                const p1 = C_pts[i];
+                const p2 = C_pts[i+1];
+                const avgZ = (p1.z + p2.z) / 2;
+                list.push({
+                    type: 'line',
+                    depth: avgZ,
+                    draw: () => {
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = purpleColor;
+                        ctx.lineWidth = 3.5;
+                        ctx.stroke();
+                    }
+                });
+            }
+
+            // Add Base Circle C's bounding disk faces
+            const center_rot = rotate3D(0, 0, 0, angleX, angleY);
+            const center_proj = { x: centerX + center_rot.x * scale, y: centerY - center_rot.y * scale, z: center_rot.z };
+            for (let i = 0; i < C_pts.length - 1; i++) {
+                const p1 = C_pts[i];
+                const p2 = C_pts[i+1];
+                const avgZ = (center_proj.z + p1.z + p2.z) / 3;
+                list.push({
+                    type: 'face',
+                    depth: avgZ - 0.001, // slightly behind the borders
+                    draw: () => {
+                        ctx.beginPath();
+                        ctx.moveTo(center_proj.x, center_proj.y);
+                        ctx.lineTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.closePath();
+                        ctx.fillStyle = purpleDiskColor;
+                        ctx.fill();
+                    }
+                });
+            }
+
+            // Draw coordinate axis guides for reference
+            const axes = [
+                {x: 1.5, y: 0, z: 0, label: 'x', color: 'rgba(128,128,128,0.2)'},
+                {x: 0, y: 1.5, z: 0, label: 'y', color: 'rgba(128,128,128,0.2)'},
+                {x: 0, y: 0, z: 2.2, label: 'z', color: 'rgba(128,128,128,0.2)'}
+            ];
+            axes.forEach(axis => {
+                const start = rotate3D(0,0,0, angleX, angleY);
+                const end = rotate3D(axis.x, axis.y, axis.z, angleX, angleY);
+                const p1 = { x: centerX + start.x * scale, y: centerY - start.y * scale, z: start.z };
+                const p2 = { x: centerX + end.x * scale, y: centerY - end.y * scale, z: end.z };
+                list.push({
+                    type: 'line',
+                    depth: (p1.z + p2.z) / 2 - 0.2, // background
+                    draw: () => {
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = axis.color;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([3, 3]);
+                        ctx.stroke();
+                        ctx.setLineDash([]); // reset
+                        
+                        ctx.fillStyle = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
+                        ctx.font = '9px monospace';
+                        ctx.fillText(axis.label, p2.x + 5, p2.y + 3);
+                    }
+                });
+            });
+
+            if (linkId === 1) {
+                // Link 1: Trivial Link K1
+                const K1_pts_raw = getK1Points(s);
+                const K1_pts = K1_pts_raw.map(p => {
+                    const rot = rotate3D(p.x, p.y, p.z, angleX, angleY);
+                    return { x: centerX + rot.x * scale, y: centerY - rot.y * scale, z: rot.z };
+                });
+
+                for (let i = 0; i < K1_pts.length - 1; i++) {
+                    const p1 = K1_pts[i];
+                    const p2 = K1_pts[i+1];
+                    const avgZ = (p1.z + p2.z) / 2;
+                    list.push({
+                        type: 'line',
+                        depth: avgZ,
+                        draw: () => {
+                            ctx.beginPath();
+                            ctx.moveTo(p1.x, p1.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.strokeStyle = blueColor;
+                            ctx.lineWidth = 3.5;
+                            if (isDark) {
+                                ctx.shadowColor = blueColor;
+                                ctx.shadowBlur = 5;
+                            }
+                            ctx.stroke();
+                            ctx.shadowBlur = 0; // reset
+                        }
+                    });
+                }
+            } else {
+                // Link 2: Hopf Link K2
+                const K2_pts_raw = getK2Points(s);
+                const K2_pts = K2_pts_raw.map(p => {
+                    const rot = rotate3D(p.x, p.y, p.z, angleX, angleY);
+                    return { x: centerX + rot.x * scale, y: centerY - rot.y * scale, z: rot.z };
+                });
+
+                for (let i = 0; i < K2_pts.length - 1; i++) {
+                    const p1 = K2_pts[i];
+                    const p2 = K2_pts[i+1];
+                    const avgZ = (p1.z + p2.z) / 2;
+                    list.push({
+                        type: 'line',
+                        depth: avgZ,
+                        draw: () => {
+                            ctx.beginPath();
+                            ctx.moveTo(p1.x, p1.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.strokeStyle = (s >= 0.5) ? redColor : orangeColor;
+                            ctx.lineWidth = 3.5;
+                            if (isDark) {
+                                ctx.shadowColor = (s >= 0.5) ? redColor : orangeColor;
+                                ctx.shadowBlur = 5;
+                            }
+                            ctx.stroke();
+                            ctx.shadowBlur = 0; // reset
+                        }
+                    });
+                }
+
+                // If s >= 0.5, draw the red intersection point at (1,0,0) in 3D
+                if (s >= 0.5) {
+                    const coll_raw = { x: 1.0, y: 0.0, z: 0.0 };
+                    const coll_rot = rotate3D(coll_raw.x, coll_raw.y, coll_raw.z, angleX, angleY);
+                    const coll_proj = { x: centerX + coll_rot.x * scale, y: centerY - coll_rot.y * scale, z: coll_rot.z };
+                    
+                    list.push({
+                        type: 'point',
+                        depth: coll_proj.z + 0.1, // draw slightly on top
+                        draw: () => {
+                            ctx.beginPath();
+                            const pulse = 6 + 3 * Math.sin(Date.now() * 0.01);
+                            ctx.arc(coll_proj.x, coll_proj.y, pulse, 0, 2 * Math.PI);
+                            ctx.fillStyle = redColor;
+                            ctx.shadowColor = redColor;
+                            ctx.shadowBlur = 12;
+                            ctx.fill();
+                            ctx.lineWidth = 1.5;
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.stroke();
+                            ctx.shadowBlur = 0; // reset
+
+                            // draw warning label
+                            ctx.fillStyle = redColor;
+                            ctx.font = 'bold 10px monospace';
+                            ctx.textAlign = 'left';
+                            ctx.fillText("COLLISION (1,0,0)", coll_proj.x + 12, coll_proj.y + 4);
+                        }
+                    });
+                }
+            }
+
+            // Painters Algorithm: sort elements back-to-front (ascending depth)
+            // Note: depth coordinate z goes from back (negative) to front (positive) after rotation
+            list.sort((a, b) => a.depth - b.depth);
+
+            // Execute draw commands
+            list.forEach(el => el.draw());
+        }
+
+        // Main Loop
+        function animate() {
+            if (isPlaying) {
+                s += 0.003;
+                if (s > 1.0) {
+                    s = 0.0; // loop back
+                }
+                updateUI();
+            }
+
+            drawScene();
+            requestAnimationFrame(animate);
+        }
+
+        updateUI();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

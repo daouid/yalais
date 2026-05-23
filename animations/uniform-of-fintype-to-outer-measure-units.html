@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZMod p Units Probability Concept Animation</title>
+    <style>
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a24;
+            --text-secondary: #495057;
+            --border-color: #e9ecef;
+            --accent-color: #0ca678; /* Algebra green */
+            --color-unit: #0ca678;
+            --color-nonunit: #868e96;
+            --color-inverse-line: #4c6ef5;
+            --shadow-color: rgba(12, 166, 120, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0b0c10;
+            --bg-card: #12131a;
+            --text-primary: #f8f9fa;
+            --text-secondary: #ced4da;
+            --border-color: #242731;
+            --accent-color: #20c997;
+            --color-unit: #20c997;
+            --color-nonunit: #495057;
+            --color-inverse-line: #748ffc;
+            --shadow-color: rgba(32, 201, 151, 0.2);
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .legend {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            width: 280px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        }
+
+        .title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .prime-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .prime-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .prime-btn:hover {
+            border-color: var(--accent-color);
+            background-color: var(--shadow-color);
+        }
+
+        .prime-btn.active {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #ffffff;
+        }
+
+        .math-display {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .math-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .math-row.highlight {
+            font-weight: bold;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+
+        .value-display {
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .info-panel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .info-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .tooltip {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            max-width: 250px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-unit);"></span>
+            <span>Unit Nodes (Invertible)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-nonunit);"></span>
+            <span>0 (Non-Unit)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background-color: var(--color-inverse-line); height: 4px; border-radius: 0;"></span>
+            <span>Multiplicative Inverse Connection (a · b ≡ 1)</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="animationCanvas"></canvas>
+            <div class="tooltip" id="canvas-tooltip">Hover over a node to inspect its multiplicative inverse!</div>
+        </div>
+
+        <div class="controls">
+            <div class="title">Select Prime p</div>
+            <div class="prime-selector">
+                <button class="prime-btn" onclick="setPrime(2)">2</button>
+                <button class="prime-btn" onclick="setPrime(3)">3</button>
+                <button class="prime-btn active" onclick="setPrime(5)">5</button>
+                <button class="prime-btn" onclick="setPrime(7)">7</button>
+                <button class="prime-btn" onclick="setPrime(11)">11</button>
+                <button class="prime-btn" onclick="setPrime(13)">13</button>
+            </div>
+
+            <div class="title">Probability Distribution</div>
+            <div class="math-display">
+                <div class="math-row">
+                    <span>Prime Modulus (p)</span>
+                    <span class="value-display" id="val-p">5</span>
+                </div>
+                <div class="math-row">
+                    <span>P(x) = 1/p</span>
+                    <span class="value-display" id="val-prob">0.2000</span>
+                </div>
+                <div class="math-row">
+                    <span>Units Subset size (p - 1)</span>
+                    <span class="value-display" id="val-units-count">4</span>
+                </div>
+                <div class="math-row highlight">
+                    <span>P(Units) = (p-1)/p</span>
+                    <span class="value-display" id="val-units-prob" style="color: var(--color-unit);">0.8000</span>
+                </div>
+            </div>
+
+            <div class="info-panel" id="relation-info">
+                <div class="info-title">Algebraic Property</div>
+                <div>Because p is prime, &integers;/p&integers; is a field. Every element except 0 has a unique multiplicative inverse, forming symmetric pairs. The probability of units is exactly (p-1)/p.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('canvas-tooltip');
+        const relationInfo = document.getElementById('relation-info');
+
+        let width = 0;
+        let height = 0;
+        let p = 5;
+        let hoveredIndex = null;
+        let nodes = [];
+        let particles = [];
+        let animFrameId = null;
+
+        // Multiplicative inverses modulo p
+        function getInverse(x, modulus) {
+            if (x === 0) return null;
+            for (let y = 1; y < modulus; y++) {
+                if ((x * y) % modulus === 1) {
+                    return y;
+                }
+            }
+            return null;
+        }
+
+        function setPrime(primeVal) {
+            p = primeVal;
+            
+            // Update active buttons
+            document.querySelectorAll('.prime-btn').forEach(btn => {
+                if (parseInt(btn.textContent) === p) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update stats
+            document.getElementById('val-p').textContent = p;
+            document.getElementById('val-prob').textContent = (1 / p).toFixed(4);
+            document.getElementById('val-units-count').textContent = p - 1;
+            document.getElementById('val-units-prob').textContent = ((p - 1) / p).toFixed(4);
+
+            hoveredIndex = null;
+            tooltip.textContent = "Hover over a node to inspect its multiplicative inverse!";
+            relationInfo.innerHTML = `<div class="info-title">Algebraic Property</div><div>Because p is prime, &integers;/${p}&integers; is a field. Every element except 0 has a unique multiplicative inverse, forming symmetric pairs. The probability of units is exactly (${p}-1)/${p}.</div>`;
+
+            // Reset nodes & trigger animation
+            calculateNodePositions();
+            initParticles();
+            draw();
+        }
+
+        function calculateNodePositions() {
+            nodes = [];
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const ringRadius = Math.min(width, height) * 0.28;
+
+            for (let i = 0; i < p; i++) {
+                const angle = -Math.PI / 2 + (i * 2 * Math.PI) / p;
+                nodes.push({
+                    index: i,
+                    x: centerX + Math.cos(angle) * ringRadius,
+                    y: centerY + Math.sin(angle) * ringRadius,
+                    angle: angle,
+                    radius: hoveredIndex === i ? 24 : 20,
+                    isUnit: i !== 0,
+                    inverse: getInverse(i, p)
+                });
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            // Create particle stream from center to each node representing uniform mass distribution
+            for (let i = 0; i < p; i++) {
+                for (let j = 0; j < 8; j++) {
+                    particles.push({
+                        startX: centerX,
+                        startY: centerY,
+                        x: centerX,
+                        y: centerY,
+                        targetIndex: i,
+                        speed: 0.02 + Math.random() * 0.03,
+                        progress: Math.random(), // Distributed start times
+                        size: 2 + Math.random() * 2
+                    });
+                }
+            }
+        }
+
+        function updateParticles() {
+            particles.forEach(pt => {
+                pt.progress += pt.speed;
+                if (pt.progress >= 1) {
+                    pt.progress = 0;
+                    pt.x = pt.startX;
+                    pt.y = pt.startY;
+                } else {
+                    const target = nodes[pt.targetIndex];
+                    if (target) {
+                        // Smooth cubic interpolation
+                        const t = pt.progress;
+                        const ease = t * t * (3 - 2 * t);
+                        pt.x = pt.startX + (target.x - pt.startX) * ease;
+                        pt.y = pt.startY + (target.y - pt.startY) * ease;
+                    }
+                }
+            });
+        }
+
+        function drawRingAndConnections() {
+            const styles = getComputedStyle(document.documentElement);
+            const borderCol = styles.getPropertyValue('--border-color');
+            const unitCol = styles.getPropertyValue('--color-unit');
+            const nonunitCol = styles.getPropertyValue('--color-nonunit');
+            const invCol = styles.getPropertyValue('--color-inverse-line');
+
+            // Draw main ring
+            ctx.beginPath();
+            ctx.arc(width / 2, height / 2, Math.min(width, height) * 0.28, 0, 2 * Math.PI);
+            ctx.strokeStyle = borderCol;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Draw faint inverse connections
+            nodes.forEach(node => {
+                if (node.isUnit && node.inverse !== null && node.inverse > node.index) {
+                    const target = nodes[node.inverse];
+                    ctx.beginPath();
+                    ctx.moveTo(node.x, node.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.strokeStyle = borderCol;
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+
+            // Draw highlighted hovered inverse connection
+            if (hoveredIndex !== null && hoveredIndex !== 0) {
+                const source = nodes[hoveredIndex];
+                const target = nodes[source.inverse];
+                if (target) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(source.x, source.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.strokeStyle = invCol;
+                    ctx.lineWidth = 4;
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = invCol;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }
+
+        function drawNodesAndProbability() {
+            const styles = getComputedStyle(document.documentElement);
+            const unitCol = styles.getPropertyValue('--color-unit').trim();
+            const nonunitCol = styles.getPropertyValue('--color-nonunit').trim();
+            const bgCard = styles.getPropertyValue('--bg-card').trim();
+            const textPrimary = styles.getPropertyValue('--text-primary').trim();
+            const textSecondary = styles.getPropertyValue('--text-secondary').trim();
+
+            nodes.forEach(node => {
+                const isHovered = hoveredIndex === node.index;
+                const isInverseHovered = hoveredIndex !== null && nodes[hoveredIndex].inverse === node.index;
+                
+                let nodeRadius = node.radius;
+                if (isHovered) nodeRadius = 24;
+                else if (isInverseHovered) nodeRadius = 22;
+
+                // Probability bar height (proportional to 1/p)
+                const baseProbHeight = Math.min(width, height) * 0.15;
+                const probHeight = baseProbHeight * (5 / p); // Normalize size slightly across primes
+                
+                const startRadius = nodeRadius + 4;
+                const endRadius = startRadius + probHeight;
+
+                const startX = node.x + Math.cos(node.angle) * startRadius;
+                const startY = node.y + Math.sin(node.angle) * startRadius;
+                const endX = node.x + Math.cos(node.angle) * endRadius;
+                const endY = node.y + Math.sin(node.angle) * endRadius;
+
+                // Draw uniform probability indicator bar
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = node.isUnit ? unitCol : nonunitCol;
+                ctx.lineWidth = isHovered ? 8 : 5;
+                ctx.lineCap = "round";
+                ctx.stroke();
+
+                // Draw probability value label
+                if (isHovered || p <= 7) {
+                    ctx.save();
+                    ctx.fillStyle = textSecondary;
+                    ctx.font = isHovered ? "bold 11px monospace" : "10px monospace";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    
+                    const labelX = node.x + Math.cos(node.angle) * (endRadius + 16);
+                    const labelY = node.y + Math.sin(node.angle) * (endRadius + 16);
+                    ctx.fillText((1/p).toFixed(2), labelX, labelY);
+                    ctx.restore();
+                }
+
+                // Draw node circle
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = bgCard;
+                ctx.shadowBlur = (isHovered || isInverseHovered) ? 10 : 0;
+                ctx.shadowColor = node.isUnit ? unitCol : nonunitCol;
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset shadow
+
+                ctx.strokeStyle = node.isUnit ? unitCol : nonunitCol;
+                ctx.lineWidth = (isHovered || isInverseHovered) ? 3 : 1.5;
+                ctx.stroke();
+
+                // Draw node label
+                ctx.fillStyle = textPrimary;
+                ctx.font = (isHovered || isInverseHovered) ? "bold 15px sans-serif" : "13px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(node.index, node.x, node.y);
+            });
+        }
+
+        function drawParticles() {
+            const styles = getComputedStyle(document.documentElement);
+            const unitCol = styles.getPropertyValue('--color-unit');
+            const nonunitCol = styles.getPropertyValue('--color-nonunit');
+
+            particles.forEach(pt => {
+                const target = nodes[pt.targetIndex];
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, 2 * Math.PI);
+                ctx.fillStyle = target.isUnit ? unitCol.replace(')', ', 0.6)').replace('rgb', 'rgba') : nonunitCol.replace(')', ', 0.6)').replace('rgb', 'rgba');
+                ctx.fill();
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw connecting lines
+            drawRingAndConnections();
+
+            // Draw particles representing probability flow
+            drawParticles();
+
+            // Draw nodes and radial probability bars
+            drawNodesAndProbability();
+        }
+
+        function tick() {
+            updateParticles();
+            draw();
+            animFrameId = requestAnimationFrame(tick);
+        }
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            const dpr = window.devicePixelRatio || 1;
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
+            calculateNodePositions();
+            initParticles();
+            draw();
+        }
+
+        // Mouse interactions
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let found = null;
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const dist = Math.hypot(mouseX - node.x, mouseY - node.y);
+                if (dist < node.radius + 5) {
+                    found = i;
+                    break;
+                }
+            }
+
+            if (found !== hoveredIndex) {
+                hoveredIndex = found;
+                if (hoveredIndex !== null) {
+                    const node = nodes[hoveredIndex];
+                    if (node.index === 0) {
+                        tooltip.textContent = "0 has no multiplicative inverse (not a unit)";
+                        relationInfo.innerHTML = `
+                            <div class="info-title">Node 0 (Non-Unit)</div>
+                            <div>0 · x ≡ 0 ≠ 1 for all x. Thus, 0 is not invertible. 
+                            The uniform measure assigns weight 1/${p} = ${(1/p).toFixed(3)} to 0.</div>
+                        `;
+                    } else {
+                        const inv = node.inverse;
+                        tooltip.innerHTML = `<strong>Node ${node.index}</strong> is a unit.<br>Inverse: ${inv} (${node.index} · ${inv} ≡ 1 mod ${p})`;
+                        relationInfo.innerHTML = `
+                            <div class="info-title">Multiplicative Inverse Partner</div>
+                            <div style="font-size: 14px; font-family: monospace; margin: 4px 0; color: var(--color-inverse-line); font-weight: bold;">
+                                ${node.index} · ${inv} ≡ 1 (mod ${p})
+                            </div>
+                            <div>Every non-zero element in &integers;/${p}&integers; forms a pair with its unique inverse. This algebraic closure ensures that all p - 1 non-zero elements are units.</div>
+                        `;
+                    }
+                } else {
+                    tooltip.textContent = "Hover over a node to inspect its multiplicative inverse!";
+                    relationInfo.innerHTML = `<div class="info-title">Algebraic Property</div><div>Because p is prime, &integers;/${p}&integers; is a field. Every element except 0 has a unique multiplicative inverse, forming symmetric pairs. The probability of units is exactly (${p}-1)/${p}.</div>`;
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            hoveredIndex = null;
+            tooltip.textContent = "Hover over a node to inspect its multiplicative inverse!";
+            relationInfo.innerHTML = `<div class="info-title">Algebraic Property</div><div>Because p is prime, &integers;/${p}&integers; is a field. Every element except 0 has a unique multiplicative inverse, forming symmetric pairs. The probability of units is exactly (${p}-1)/${p}.</div>`;
+        });
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('DOMContentLoaded', () => {
+            resize();
+            // Start particle animation loop
+            tick();
+            // Request parent theme
+            window.parent.postMessage({ requestTheme: true }, '*');
+        });
+
+        // Theme Listener
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+    </script>
+</body>
+</html>

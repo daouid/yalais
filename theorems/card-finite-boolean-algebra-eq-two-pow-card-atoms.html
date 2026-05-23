@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardinality of Finite Boolean Algebras - Yalais</title>
+    <meta name="description" content="Formal Lean 4 proof and interactive concept animation of the Cardinality of Finite Boolean Algebras theorem.">
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="brand">
+                <span>yalais<span class="brand-accent">.</span></span>
+            </a>
+            <div class="nav-controls">
+                <a href="../index.html" class="nav-link" style="font-weight: 500; font-size: 14px; margin-right: 8px;">Back to Catalog</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <header class="detail-header">
+            <h1 class="detail-title">Cardinality of Finite Boolean Algebras</h1>
+            <div class="detail-meta">
+                <span class="badge-tag algebra">Algebra</span>
+                <span class="badge-tag combinatorics">Combinatorics</span>
+                <span>File: <code class="code-ref">repl/proven/Miscellaneous.lean</code></span>
+            </div>
+        </header>
+
+        <!-- Visual Row -->
+        <div class="visual-row">
+            <!-- Concept Animation Card -->
+            <div class="animation-card">
+                <div class="animation-header">
+                    <span class="animation-title">Concept Animation</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="expand-btn" onclick="toggleExpandAnimation()">&#x26F6; Expand</button>
+                        <span class="animation-badge">Interactive 3D</span>
+                    </div>
+                </div>
+                <div class="animation-wrapper">
+                    <iframe src="../animations/card-finite-boolean-algebra-eq-two-pow-card-atoms.html" class="animation-iframe" title="Cardinality of Finite Boolean Algebras Interactive Animation"></iframe>
+                </div>
+            </div>
+
+            <!-- Illustration Card -->
+            <div class="illustration-card">
+                <div class="illustration-header">Geometric Concept Illustration</div>
+                <div class="illustration-img-wrapper">
+                    <img src="../assets/images/card_finite_boolean_algebra_eq_two_pow_card_atoms_illustration.png" class="illustration-img" alt="Cardinality of Finite Boolean Algebras Geometric Concept Illustration" title="Click to zoom">
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Row -->
+        <div class="content-row">
+            <!-- Mathematical Exposition -->
+            <section class="exposition-panel">
+                <h2>Mathematical Exposition</h2>
+                <p>
+                    In order theory and abstract algebra, a Boolean algebra generalizes the properties of set operations (union, intersection, complement). A fundamental classification theorem states that <strong>every finite Boolean algebra is isomorphic to the power set of some set.</strong> This theorem formalizes a direct consequence of that classification: the cardinality of any finite Boolean algebra $\alpha$ is exactly $2^k$, where $k$ is the number of atoms in $\alpha$.
+                </p>
+                
+                <h3>Key Definitions</h3>
+                <ul>
+                    <li>
+                        <strong>Boolean Algebra:</strong> A distributive lattice with a least element $\bot$, a greatest element $\top$, and complements (where each element $x$ has a complement $x^c$ satisfying $x \sqcup x^c = \top$ and $x \sqcap x^c = \bot$).
+                    </li>
+                    <li>
+                        <strong>Atom:</strong> A minimal non-zero element in the algebra. Formally, an element $a \neq \bot$ is an atom if for any $x \in \alpha$ satisfying $\bot \le x \le a$, we have either $x = \bot$ or $x = a$.
+                    </li>
+                    <li>
+                        <strong>Bijection to Power Set:</strong> To prove the cardinality formula, we establish a bijection between $\alpha$ and the set of all subsets of atoms of $\alpha$, denoted by $\mathcal{P}(\text{Atoms})$.
+                    </li>
+                </ul>
+
+                <h3>The Core Proof Logic</h3>
+                <p>
+                    Let $\text{Atoms} = \{a \in \alpha \mid \text{IsAtom } a\}$. We define two maps:
+                </p>
+                <ol>
+                    <li>
+                        <strong>The Decomposition Map $f: \alpha \to \mathcal{P}(\text{Atoms})$:</strong> Maps an element $x$ to the set of atoms that are less than or equal to it:
+                        $$f(x) = \{ a \in \text{Atoms} \mid a \le x \}$$
+                    </li>
+                    <li>
+                        <strong>The Reconstruction Map $g: \mathcal{P}(\text{Atoms}) \to \alpha$:</strong> Takes a finite set of atoms $s$ and returns their supremum (lattice join):
+                        $$g(s) = \bigsqcup_{a \in s} a$$
+                    </li>
+                </ol>
+                <p>
+                    To show that $f$ and $g$ form a bijection, we prove two key identities:
+                </p>
+                <ul>
+                    <li>
+                        <strong>$g(f(x)) = x$:</strong> Every element in a finite Boolean algebra is equal to the join of the atoms below it. This is proved using the property that if $y \not\le x$, there exists an atom $a$ below $y$ that is not below $x$.
+                    </li>
+                    <li>
+                        <strong>$f(g(s)) = s$:</strong> The set of atoms below a join of atoms $s$ is exactly $s$. This is proved by induction on the size of $s$. The key inductive step relies on the "primeness" of atoms: if an atom $a$ is less than or equal to a join $x \sqcup y$, then $a \le x$ or $a \le y$.
+                    </li>
+                </ul>
+                <p>
+                    Establishing this equivalence yields the bijection:
+                    $$\alpha \cong \mathcal{P}(\text{Atoms})$$
+                    Because the cardinality of the power set of a finite set of size $k$ is $2^k$, it follows immediately that:
+                    $$|\alpha| = 2^{|\text{Atoms}|}$$
+                </p>
+            </section>
+
+            <!-- Lean 4 Code block -->
+            <section class="code-panel">
+                <div class="code-header">
+                    <span class="code-title">Miscellaneous.lean</span>
+                    <button class="copy-btn" data-target="lean-code">Copy Code</button>
+                </div>
+                <pre class="code-content"><code id="lean-code" class="language-lean">import Mathlib
+
+theorem card_finite_booleanAlgebra_eq_two_pow_card_atoms
+    (α : Type*) [BooleanAlgebra α] [Fintype α] [DecidableEq α]
+    [DecidablePred (IsAtom : α → Prop)] :
+    Fintype.card α = 2 ^ Fintype.card {a : α // IsAtom a} := by
+  let f : α → Finset {a : α // IsAtom a} := fun x => Finset.filter (fun a => (a : α) ≤ x) Finset.univ
+  let g : Finset {a : α // IsAtom a} → α := fun s => s.sup Subtype.val
+  have hfg : ∀ x, g (f x) = x := fun x ↦ le_antisymm (Finset.sup_le fun a ha ↦ (Finset.mem_filter.mp ha).2)
+    (BooleanAlgebra.le_iff_atom_le_imp.mpr fun a ha hax ↦ Finset.le_sup (f := Subtype.val) (Finset.mem_filter.mpr ⟨Finset.mem_univ ⟨a, ha⟩, hax⟩))
+  have hgf : ∀ s, f (g s) = s := fun s ↦ by
+    ext a; simp [f, g]
+    refine ⟨fun ha ↦ ?_, Finset.le_sup⟩
+    induction' s using Finset.induction_on with b s' hb ih
+    · exact False.elim (a.property.1 (le_bot_iff.mp (by simpa using ha)))
+    · have ha_sup : ↑a ≤ ↑b ⊔ s'.sup Subtype.val := by simpa using ha
+      have h_prime : ∀ (x y : α), ↑a ≤ x ⊔ y → ↑a ≤ x ∨ ↑a ≤ y := fun x y h ↦ by
+        by_cases hx : ↑a ≤ x; · exact Or.inl hx
+        right; have h1 : ↑a ⊓ x = ⊥ := by
+          have h2 := a.property.le_iff.mp (inf_le_left : ↑a ⊓ x ≤ ↑a)
+          exact h2.resolve_right (fun heq => hx (heq ▸ inf_le_right))
+        have h2 : ↑a = ↑a ⊓ (x ⊔ y) := le_antisymm (le_inf le_rfl h) inf_le_left
+        rw [inf_sup_left, h1, bot_sup_eq] at h2
+        exact h2 ▸ inf_le_right
+      rcases h_prime ↑b (s'.sup Subtype.val) ha_sup with hb_or | hs'
+      · exact Finset.mem_insert.mpr (Or.inl (Subtype.ext ((b.property.le_iff_eq a.property.1).mp hb_or)))
+      · exact Finset.mem_insert.mpr (Or.inr (ih hs'))
+  have e : α ≃ Finset {a : α // IsAtom a} := ⟨f, g, hfg, hgf⟩
+  rw [← Fintype.card_finset]
+  exact Fintype.card_congr e</code></pre>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 yalais &bull; Formally verified using Lean 4 & Mathlib</p>
+        </div>
+    </footer>
+
+    <!-- Global Javascript -->
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

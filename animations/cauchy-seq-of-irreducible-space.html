@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cauchy Sequence of Irreducible Space Animation</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a24;
+            --border-color: #e9ecef;
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --accent: #4c6ef5;
+            --accent-n: #9c36b5;
+            --accent-glow: rgba(76, 110, 245, 0.2);
+            --node-default: #868e96;
+            --edge-default: #dee2e6;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0b0c10;
+            --text-color: #f8f9fa;
+            --border-color: #242731;
+            --panel-bg: rgba(18, 19, 26, 0.72);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent: #5c7cfa;
+            --accent-n: #da77f2;
+            --accent-glow: rgba(92, 124, 250, 0.3);
+            --node-default: #909296;
+            --edge-default: #242731;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 240px;
+            width: calc(25% - 20px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            z-index: 10;
+        }
+        .panel-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-line {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .stat-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .slider-container {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 0;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
+        }
+        button {
+            flex: 1;
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 0;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button.active {
+            outline: 2px solid var(--text-color);
+        }
+        button.sec {
+            background: var(--border-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .instructions {
+            font-size: 9px;
+            color: var(--node-default);
+            margin-top: 8px;
+            line-height: 1.3;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="panel-title">Space Config</div>
+        <div class="stat-line">
+            <span>Space Type:</span>
+            <span class="stat-val" id="space-type-label" style="color: var(--accent);">Euclidean</span>
+        </div>
+        <div class="stat-line">
+            <span>m-Ball B(u_m, ε/2):</span>
+            <span class="stat-val" style="color: var(--accent);">Blue</span>
+        </div>
+        <div class="stat-line">
+            <span>n-Ball B(u_n, ε/2):</span>
+            <span class="stat-val" style="color: var(--accent-n);">Purple</span>
+        </div>
+        <div class="stat-line">
+            <span>z ∈ B_m ∩ B_n:</span>
+            <span class="stat-val" id="intersection-status">None</span>
+        </div>
+        <div class="stat-line">
+            <span>d(u_m, u_n) bound:</span>
+            <span class="stat-val" id="distance-bound">No bound</span>
+        </div>
+
+        <div class="slider-container">
+            <span class="slider-label">Radius (ε/2): <span id="radius-val">0.15</span></span>
+            <input type="range" id="epsilon-slider" min="0.08" max="0.30" step="0.01" value="0.15" oninput="updateEpsilon(this.value)">
+        </div>
+
+        <div class="btn-group">
+            <div class="btn-row">
+                <button id="btn-euclidean" class="active" onclick="setViewMode('euclidean')">Euclidean</button>
+                <button id="btn-irreducible" class="sec" onclick="setViewMode('irreducible')">Irreducible</button>
+            </div>
+            <div class="btn-row">
+                <button id="btn-step" class="sec" onclick="step()">Next Pair</button>
+                <button id="btn-auto" class="sec" onclick="toggleAuto()">Auto</button>
+            </div>
+        </div>
+        <div class="instructions">
+            Click on dots to manually select u_m and u_n
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let epsilon = 0.30; // ε = 2 * radius
+        let viewMode = 'euclidean';
+        let idxM = 0;
+        let idxN = 3;
+        let isAuto = false;
+        let autoInterval = null;
+
+        // 12 scattered points of the sequence
+        const points = [
+            { x: 0.20, y: 0.30, label: 'u₀' },
+            { x: 0.80, y: 0.20, label: 'u₁' },
+            { x: 0.45, y: 0.75, label: 'u₂' },
+            { x: 0.75, y: 0.65, label: 'u₃' },
+            { x: 0.30, y: 0.60, label: 'u₄' },
+            { x: 0.60, y: 0.35, label: 'u₅' },
+            { x: 0.15, y: 0.70, label: 'u₆' },
+            { x: 0.85, y: 0.45, label: 'u₇' },
+            { x: 0.38, y: 0.20, label: 'u₈' },
+            { x: 0.52, y: 0.85, label: 'u₉' },
+            { x: 0.90, y: 0.80, label: 'u₁₀' },
+            { x: 0.68, y: 0.15, label: 'u₁₁' }
+        ];
+
+        // Theme Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+                draw();
+            }
+        });
+        window.parent.postMessage({ requestTheme: true }, '*');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.style.width = `${rect.width}px`;
+            ctx.style.height = `${rect.height}px`;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateEpsilon(val) {
+            epsilon = parseFloat(val) * 2;
+            document.getElementById('radius-val').textContent = val;
+            draw();
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.getElementById('space-type-label').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            
+            document.getElementById('btn-euclidean').className = mode === 'euclidean' ? 'active' : 'sec';
+            document.getElementById('btn-irreducible').className = mode === 'irreducible' ? 'active' : 'sec';
+            
+            draw();
+        }
+
+        function step() {
+            idxM = (idxM + 1) % points.length;
+            idxN = (idxM + 3) % points.length;
+            if (idxM === idxN) idxN = (idxN + 1) % points.length;
+            draw();
+        }
+
+        function toggleAuto() {
+            isAuto = !isAuto;
+            const btn = document.getElementById('btn-auto');
+            if (isAuto) {
+                btn.textContent = "Pause";
+                btn.classList.remove('sec');
+                autoInterval = setInterval(step, 1500);
+            } else {
+                btn.textContent = "Auto";
+                btn.classList.add('sec');
+                clearInterval(autoInterval);
+            }
+        }
+
+        // Mouse click handler to select nodes
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const w = rect.width;
+            const h = rect.height;
+            const leftOffset = w > 600 ? 220 : 0;
+            const drawW = w - leftOffset;
+
+            // Find closest point
+            let closestIdx = -1;
+            let minDist = 30; // click threshold in px
+
+            points.forEach((p, idx) => {
+                const px = leftOffset + drawW * 0.1 + p.x * drawW * 0.8;
+                const py = h * 0.1 + p.y * h * 0.8;
+                const dist = Math.hypot(mouseX - px, mouseY - py);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestIdx = idx;
+                }
+            });
+
+            if (closestIdx !== -1) {
+                if (closestIdx === idxM) {
+                    // ignore click on same
+                } else {
+                    idxN = idxM;
+                    idxM = closestIdx;
+                    draw();
+                }
+            }
+        });
+
+        function draw() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const styles = getComputedStyle(document.documentElement);
+            const textColor = styles.getPropertyValue('--text-color').trim();
+            const accentM = styles.getPropertyValue('--accent').trim();
+            const accentN = styles.getPropertyValue('--accent-n').trim();
+            const borderColor = styles.getPropertyValue('--border-color').trim();
+            const nodeDefault = styles.getPropertyValue('--node-default').trim();
+
+            const leftOffset = w > 600 ? 220 : 0;
+            const drawW = w - leftOffset;
+
+            const scaleX = (x) => leftOffset + drawW * 0.1 + x * drawW * 0.8;
+            const scaleY = (y) => h * 0.1 + y * h * 0.8;
+
+            const rScale = Math.min(drawW, h) * 0.8;
+            const radius = rScale * (epsilon / 2);
+
+            const uM = points[idxM];
+            const uN = points[idxN];
+
+            const mx = scaleX(uM.x);
+            const my = scaleY(uM.y);
+            const nx = scaleX(uN.x);
+            const ny = scaleY(uN.y);
+
+            const euclideanDist = Math.hypot(nx - mx, ny - my);
+            const doesOverlap = euclideanDist < 2 * radius;
+
+            let zx, zy;
+            let hasIntersection = false;
+
+            if (viewMode === 'euclidean') {
+                if (doesOverlap) {
+                    // Midpoint is in the intersection
+                    zx = (mx + nx) / 2;
+                    zy = (my + ny) / 2;
+                    hasIntersection = true;
+                }
+            } else {
+                // Irreducible view: all open balls intersect!
+                hasIntersection = true;
+                if (doesOverlap) {
+                    zx = (mx + nx) / 2;
+                    zy = (my + ny) / 2;
+                } else {
+                    // Draw a dimensional wormhole/bridge connecting them
+                    // Control point for the curved bridge
+                    const midX = (mx + nx) / 2;
+                    const midY = (my + ny) / 2;
+                    const dx = nx - mx;
+                    const dy = ny - my;
+                    
+                    // Perpendicular offset for curvature
+                    const perpX = -dy * 0.25;
+                    const perpY = dx * 0.25;
+                    
+                    const ctrlX = midX + perpX;
+                    const ctrlY = midY + perpY;
+
+                    // z sits at the midpoint of the Bezier curve
+                    // B(t) = (1-t)^2*P0 + 2(1-t)t*P1 + t^2*P2 at t=0.5
+                    zx = 0.25 * mx + 0.5 * ctrlX + 0.25 * nx;
+                    zy = 0.25 * my + 0.5 * ctrlY + 0.25 * ny;
+
+                    // Draw Bridge Tube
+                    ctx.beginPath();
+                    ctx.moveTo(mx, my);
+                    ctx.quadraticCurveTo(ctrlX, ctrlY, nx, ny);
+                    ctx.strokeStyle = accentM;
+                    ctx.lineWidth = radius * 1.5;
+                    ctx.lineCap = 'round';
+                    ctx.globalAlpha = 0.08;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(mx, my);
+                    ctx.quadraticCurveTo(ctrlX, ctrlY, nx, ny);
+                    ctx.strokeStyle = accentN;
+                    ctx.lineWidth = radius * 0.8;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+
+                    // Draw bridge borders
+                    ctx.beginPath();
+                    ctx.moveTo(mx, my);
+                    ctx.quadraticCurveTo(ctrlX, ctrlY, nx, ny);
+                    ctx.strokeStyle = borderColor;
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Update DOM stats
+            const statusEl = document.getElementById('intersection-status');
+            const boundEl = document.getElementById('distance-bound');
+            if (hasIntersection) {
+                statusEl.textContent = 'Found z';
+                statusEl.style.color = '#0ca678';
+                boundEl.innerHTML = `d(u<sub>m</sub>, u<sub>n</sub>) &lt; ε`;
+                boundEl.style.color = '#0ca678';
+            } else {
+                statusEl.textContent = 'None';
+                statusEl.style.color = 'var(--accent-n)';
+                boundEl.textContent = 'No bound';
+                boundEl.style.color = 'var(--text-color)';
+            }
+
+            // Draw Balls
+            // Ball u_m
+            ctx.beginPath();
+            ctx.arc(mx, my, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = accentM;
+            ctx.globalAlpha = 0.06;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = accentM;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Ball u_n
+            ctx.beginPath();
+            ctx.arc(nx, ny, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = accentN;
+            ctx.globalAlpha = 0.06;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = accentN;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Draw all sequence points
+            points.forEach((p, idx) => {
+                const x = scaleX(p.x);
+                const y = scaleY(p.y);
+                const isSelected = (idx === idxM || idx === idxN);
+
+                ctx.beginPath();
+                ctx.arc(x, y, isSelected ? 6 : 3.5, 0, 2 * Math.PI);
+                ctx.fillStyle = idx === idxM ? accentM : (idx === idxN ? accentN : nodeDefault);
+                ctx.fill();
+
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                    ctx.strokeStyle = idx === idxM ? accentM : accentN;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                // Node label
+                ctx.fillStyle = isSelected ? (idx === idxM ? accentM : accentN) : nodeDefault;
+                ctx.font = isSelected ? "bold 10px sans-serif" : "9px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "top";
+                ctx.fillText(p.label, x, y + (isSelected ? 12 : 8));
+            });
+
+            // Label selected nodes on canvas
+            ctx.fillStyle = accentM;
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText("u_m", mx, my - 24);
+
+            ctx.fillStyle = accentN;
+            ctx.fillText("u_n", nx, ny - 24);
+
+            // Draw intersection point z and distance lines
+            if (hasIntersection && zx !== undefined && zy !== undefined) {
+                // Draw z point
+                ctx.beginPath();
+                ctx.arc(zx, zy, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#0ca678';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#0ca678';
+                ctx.font = "bold 11px sans-serif";
+                ctx.fillText("z ∈ B_m ∩ B_n", zx, zy - 15);
+
+                // Draw path lines u_m -> z and z -> u_n
+                ctx.beginPath();
+                ctx.moveTo(mx, my);
+                ctx.lineTo(zx, zy);
+                ctx.lineTo(nx, ny);
+                ctx.strokeStyle = '#0ca678';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Label distance paths
+                ctx.fillStyle = '#0ca678';
+                ctx.font = "italic 9px sans-serif";
+                ctx.fillText("< ε/2", (mx + zx) / 2 - 10, (my + zy) / 2 - 10);
+                ctx.fillText("< ε/2", (nx + zx) / 2 + 10, (ny + zy) / 2 - 10);
+            }
+        }
+
+        // Initialize
+        resize();
+    </script>
+</body>
+</html>
